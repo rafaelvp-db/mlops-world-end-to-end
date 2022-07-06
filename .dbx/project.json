@@ -1,0 +1,9 @@
+{
+    "environments": {
+        "default": {
+            "profile": "dev",
+            "workspace_dir": "/Shared/dbx/telco_churn_mlops",
+            "artifact_location": "dbfs:/Shared/dbx/projects/telco_churn_mlops"
+        }
+    }
+}

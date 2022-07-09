@@ -7,7 +7,7 @@
 # MAGIC ## Data Prep
 # MAGIC 
 # MAGIC Calling split function for Train and Test, the preprocessing part is only for the Train, our test will be kept for the final inference 
-# MAGIC Savinf everything into Delta before running the model 
+# MAGIC Saving everything into Delta before running the model 
 
 # COMMAND ----------
 

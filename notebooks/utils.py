@@ -5,6 +5,7 @@
 
 
 import pyspark.sql.functions as F
+from pyspark.sql import SparkSession
 
 from delta.tables import DeltaTable
 import tempfile
@@ -102,36 +103,37 @@ def compute_service_features(sparkDF):
 
 
 def export_df(tableName):
-  """
-  Read Delta Table, compute features with prepare_features and compute_service_features
-  then convert into Pandas DF select the main DF for train and validation
-  
-  :tableName str: Delta table Name 
-  :return: X and y pandas DF
-  """
-  telco_df = spark.read.format("delta").table(f"{tableName}")
+    """
+    Read Delta Table, compute features with prepare_features and compute_service_features
+    then convert into Pandas DF select the main DF for train and validation
 
-  telco_df = prepare_features(telco_df)
-  telco_df  = compute_service_features(telco_df)
+    :tableName str: Delta table Name 
+    :return: X and y pandas DF
+    """
+    spark = SparkSession.builder.getOrCreate()
+    telco_df = spark.read.format("delta").table(f"{tableName}")
 
-  dataset = telco_df.toPandas()
-  X = dataset.drop(['customerID','Churn'], axis=1)
-  y = dataset['Churn']
-  
-  return X, y
+    telco_df = prepare_features(telco_df)
+    telco_df  = compute_service_features(telco_df)
+
+    dataset = telco_df.toPandas()
+    X = dataset.drop(['customerID','Churn'], axis=1)
+    y = dataset['Churn']
+
+    return X, y
 
 
 def compute_weights(y_train):
-  """
-  Define minimum positive class scale factor
-  """
-  weights = compute_class_weight(
+    """
+    Define minimum positive class scale factor
+    """
+    weights = compute_class_weight(
     'balanced', 
     classes=np.unique(y_train), 
     y=y_train
     )
-  scale = weights[1]/weights[0]
-  return scale
+    scale = weights[1]/weights[0]
+    return scale
 
 
 def write_into_delta_table(

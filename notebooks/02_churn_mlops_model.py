@@ -1,23 +1,24 @@
 # Databricks notebook source
-# MAGIC %run ./scripts
-
-# COMMAND ----------
-
 # MAGIC %md 
-# MAGIC ## Data Prep
+# MAGIC ## 2. Data Prep
 # MAGIC 
 # MAGIC Calling split function for Train and Test, the preprocessing part is only for the Train, our test will be kept for the final inference 
 # MAGIC Saving everything into Delta before running the model 
 
 # COMMAND ----------
 
-# MAGIC %run ./data_prep 
+dbutils.widgets.text("db_name", "telcochurndb")
+db_name = dbutils.widgets.get("db_name")
+
+# COMMAND ----------
+
+from utils import export_df
 
 # COMMAND ----------
 
 # reading back the Delta table and calling a data4train -> can be a class then
 print("Preparing X and y")
-X_train, y_train = data4model(f"{db_name}.trainDF")
+X_train, y_train = export_df(f"{db_name}.training")
 # scale = np.round(weight_compute(y_train),3) # scale can be places also inside the parameters then 
 #print(f"Our target is imbalanced, computing the scale is {scale}")
 

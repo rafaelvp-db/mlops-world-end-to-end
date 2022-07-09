@@ -82,23 +82,26 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
   """
   mlflow.sklearn.autolog(disable=True)
   
-  def __init__(self, conf, params, retrain=None, spark=SparkContext()):
+  def __init__(self, conf=conf, params=params, retrain=None, data_provided=None):
     self.conf = conf
     self.params = params
     self.data_path = conf["scoring-input-path"]
     self.model_name = conf["model-name"]
-    self.data_provider = data4model(f"{self.data_path}")
     self.experimentID = setup_mlflow_conf(self.conf)
-    self.retrain = retrain
     self.stage = conf["model-stage"]
+    self.retrain = retrain
+    self.data_provided = data_provided
+      
     
-  def read_data(self, data_path):
-    self.X, self.y = data4model(f"{data_path}")
+  def get_data(self, data_path):
+    import pandas
+    self.dataset = pandas.read_parquet(data_path)
+    self.X = self.dataset.drop(['customerID','Churn'], axis=1)
+    self.y = self.dataset['Churn']  
     return self.X, self.y
   
   def feature_prep(self):
     """
-    :params dict: all hyperparameters of the model
     :return object: return a sklearn Pipeline object 
     """
     transformers = []
@@ -126,56 +129,78 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
                          ["DeviceProtection", "InternetService", "MultipleLines", "OnlineBackup", \
                           "OnlineSecurity", "PaymentMethod", "StreamingMovies", "StreamingTV", "TechSupport", "gender"]))
 
-    return Pipeline([
+    self.pipeline = Pipeline([
         ("preprocessor", ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=0)),
         ("standardizer", StandardScaler()),])
+    
+    return self.pipeline
   
   def model_train(self, params):   
     params = clean_params(params)
     self.model = XGBClassifier(**params)
     return self.model
   
-  def model_call(self, model_name, stage):
-    pass
+  def model_call(self):
+    logged_model = 'runs:/322e26961b4c4c649d5759a97ec6e202/retrained_clf_xgb'
+    # Load model as a PyFuncModel.
+    self.loaded_model = mlflow.pyfunc.load_model(logged_model)
+    return self.loaded_model
   
-  def predict(self):
-    X, y = self.read_data(self.data_path)
-    X_prep = self.feature_prep().fit_transform(X)
+  def predict(self, df=None):
+    if self.data_provided: 
+      X, y = self.get_data(self.data_path)
+      trasformer = self.feature_prep().fit(X)
+      self.X_prep = trasformer.transform(df)
+    else:
+      X, y = self.get_data(self.data_path)
+      self.X_prep = self.feature_prep().fit_transform(X)
     
     if self.retrain: 
-      
-      with mlflow.start_run(experiment_id=self.experimentID, run_name='xgb_cl'):
+      with mlflow.start_run(experiment_id = self.experimentID) as run:
         model = self.model_train(self.params)
-        evaluation = [(X_prep, y)]
-        model.fit(X_prep, y,
+        evaluation = [(self.X_prep, y)]
+        model.fit(self.X_prep, y,
                   eval_set=evaluation,
                   eval_metric=self.params['eval_metric'])
-        predictions = model.predict_proba(X_prep)[:,1]
-        return predictions 
+        mlflow.sklearn.log_model(model,"retrained_clf_xgb",
+                                 input_example=self.X_prep[:3,:],
+                                 registered_model_name = self.model_name
+                                )
+        predictions = model.predict_proba(self.X_prep)[:,1]
+      return predictions 
         
     else: 
-      model = self.model_call(self.model_name, self.model_stage)
-      prediction = model.predict_proba(X_prep)[:,1]
-      return prediction 
+      model = self.model_call()
+      predictions = model.predict(self.X_prep)
+      return predictions 
       
-    """
-    Place here the MLFlow registry part 
-    """
-    return self.model.predict_proba(X)[:,1]
 
 # COMMAND ----------
 
-wrappedModel = SklearnModelWrapper(conf, params, retrain=True)  
-X_prediction = wrappedModel.predict()
+wrappedModel = SklearnModelWrapper(conf, params, retrain=False, data_provided=True) 
+X,y = wrappedModel.get_data(conf['input-path'])
+wrappedModel.predict(df=X.iloc[:10,:])
+
+# COMMAND ----------
+
+X.iloc[:1,:].values
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ### TO DO
-# MAGIC 
-# MAGIC Need to add Spark COntext inside the Class and it should be ok 
+# MAGIC ### HERE THE REGISTERED MODEL DOES NOT evoke back..
 
 # COMMAND ----------
+
+
+
+# COMMAND ----------
+
+wrappedModel = SklearnModelWrapper() 
 
 mlflow.pyfunc.log_model(artifact_path='churn_model',python_model=wrappedModel,
                                 registered_model_name='churn_mlops_ap')
@@ -185,10 +210,14 @@ mlflow.end_run()
 
 import mlflow.pyfunc
  
-model_version_uri = "models:/{model_name}/{model_version}".format(model_name="xbg_pipeline", model_version='2')
+model_version_uri = "models:/{model_name}/{model_version}".format(model_name="churn_mlops_ap", model_version='4')
  
 print("Loading registered model version from URI: '{model_uri}'".format(model_uri=model_version_uri))
 latest_model_version = mlflow.pyfunc.load_model(model_version_uri)
+
+# COMMAND ----------
+
+latest_model_version.predict(X.iloc[:1,:])
 
 # COMMAND ----------
 

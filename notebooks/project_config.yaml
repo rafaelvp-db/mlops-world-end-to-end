@@ -2,15 +2,15 @@ experiment-path: "/Shared/dbx/projects/"
 model-name: "churn_mlops"
 model-stage : "Production"
 
-output-format: "delta"
+output-format: "parquet"
 output-path: "dbfs:/dbx/tmp/test/churn_mlops"
 db-name : "churn_mlops"
 
-input-format: "delta"
-input-path: "churn_mlops.trainDF"
-test-path: "churn_mlops.testDF"
-scoring-input-path: "churn_mlops.trainDF"
-scoring-predictions-path: "churn_mlops.predictionsDF"
+input-format: "parquet"
+input-path: "/dbfs/Users/anastasia.prokaieva@databricks.com/demo/churn_mlops/train"
+test-path: "/dbfs/Users/anastasia.prokaieva@databricks.com/demo/churn_mlops/test"
+scoring-input-path: "/dbfs/Users/anastasia.prokaieva@databricks.com/demo/churn_mlops/train"
+scoring-predictions-path: "/dbfs/Users/anastasia.prokaieva@databricks.com/demo/churn_mlops/predictions"
 
 fraction : 0.8
 seed: 42483
@@ -27,6 +27,6 @@ params-subsample: 0.25
 params-eval_metric: 'aucpr'
 params-tree_method: 'hist'
 params-n_estimators: 200
-params-silent: 1
+params-silent: True
 
 databricks-host: "https://e2-demo-field-eng.cloud.databricks.com/"

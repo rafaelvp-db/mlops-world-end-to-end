@@ -1,34 +1,42 @@
 # Databricks notebook source
-# MAGIC %run ./scripts
+# MAGIC %md
+# MAGIC 
+# MAGIC # Telco Churn Prediction
+# MAGIC ## 1. Data Preparation
 
 # COMMAND ----------
 
+# DBTITLE 1,Declaring our input widgets
+dbutils.widgets.text("reinitialize", "True")
+dbutils.widgets.text("db_name", "telcochurndb")
+dbutils.widgets.text("input_data_path", "telcochurndb")
 
+reinitialize = bool(dbutils.widgets.get("reinitialize"))
+db_name = dbutils.widgets.get("db_name")
 
 # COMMAND ----------
 
-reInitialize = None
-# this part can be removed 
-if reInitialize: 
-  # creating a database if does not exist
-  _ = spark.sql(f'create database if not exists {db_name}') # should be add drop database ? 
-  # drop a table if exists 
-  _ = spark.sql(f"""DROP TABLE IF EXISTS {db_name}.trainDF""")
-  _ = spark.sql(f"""DROP TABLE IF EXISTS {db_name}.testDF""")
-  
+# DBTITLE 1,Importing our library
+from scripts import stratified_split_train_test
 
-telco_df_raw = spark.read.option("header", True).option("inferSchema", True).csv(DATA_LOAD)
-# validation set can be added, but the dataset is already pretty small 
-df_train, df_test = stratified_split_train_test(df=telco_df_raw, frac=FRACTION,
-                                                label="Churn", join_on="customerID", seed=SEED)
+# COMMAND ----------
 
-#df_train, df_validation = stratified_split_train_test(df=df_train, frac=FRACTION,
-#                                                label="Churn", join_on="customerID", seed=SEED)
+if reinitialize: 
+  spark.sql(f"drop database if exists {db_name}")
+  spark.sql(f"create database {db_name}")
 
-# Save data into Delta 
-_= writeIntoDeltaTable(df_train, f"{db_name}.trainDF")
-_= writeIntoDeltaTable(df_test, f"{db_name}.testDF")
+#telco_df_raw = spark.read.option("header", True).option("inferSchema", True).csv(DATA_LOAD)
+telco_df_raw = spark.read.table("sr_ibm_telco_churn.bronze_customers")
+df_train, df_test = stratified_split_train_test(
+  df = telco_df_raw,
+  frac=FRACTION,
+  label="Churn",
+  join_on="customerID",
+  seed=SEED
+)
 
+writeIntoDeltaTable(df_train, f"{db_name}.training")
+writeIntoDeltaTable(df_test, f"{db_name}.testing")
 
 # COMMAND ----------
 

@@ -32,3 +32,8 @@ htmlcov/*
 
 # local mlflow files
 mlruns/
+
+
+.venv
+
+.egg-info

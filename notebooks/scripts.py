@@ -39,24 +39,6 @@ from hyperopt import hp, fmin, tpe, SparkTrials, STATUS_OK, space_eval
 # COMMAND ----------
 
 # *****
-# Setting Parameters - can be passed into a file
-# *****
-
-db_name = "churn_mlops"
-DATA_LOAD = "/mnt/databricks-datasets-private/ML/telco_churn/Telco-Customer-Churn.csv"
-
-model_type = "xgb"
-SEED = 454343
-FRACTION = 0.8
-
-model_registry_home = "/Shared/dbx/projects/"
-model_name_registry = "churn_mlops"
-
-
-
-# COMMAND ----------
-
-# *****
 # Functions
 # *****
 
@@ -153,6 +135,83 @@ def weight_compute(y_train):
     )
   scale = weights[1]/weights[0]
   return scale
+
+
+def writeIntoDeltaTable(df, path, schema_option="overwriteSchema", mode="overwrite", table_type='managed'):
+  if table_type == "managed":
+    df.write.format('delta').mode(mode).option(schema_option, "true").saveAsTable(path)
+  else:
+    # you need to provide the full path 
+    # example : /mnt/project/delta_ 
+    df.write.format('delta').mode(mode).option(schema_option, "true").save(path)
+
+# COMMAND ----------
+
+def train_model(params):
+  """ 
+  Function that call the pipeline to train a model and Tune it with HyperOpt 
+  
+  :params dict: all hyperparameters of the model
+  :return dict: return a dictionary that contains a status and the loss of the model 
+  """
+  model = build_model(params)
+  model.fit(X_train, y_train)
+  loss = log_loss(y_train, model.predict_proba(X_train))
+  mlflow.log_metrics({'log_loss': loss,
+                      'accuracy': accuracy_score(y_train, model.predict(X_train))}
+                    )
+  return { 'status': STATUS_OK, 'loss': loss }
+
+def build_model(params):
+  """
+  
+  :params dict: all hyperparameters of the model
+  :return object: return a sklearn Pipeline object 
+  """
+  transformers = []
+
+  bool_pipeline = Pipeline(steps=[
+      ("cast_type", FunctionTransformer(lambda df: df.astype(object))),
+      ("imputer", SimpleImputer(missing_values=None, strategy="most_frequent")),
+      ("onehot", OneHotEncoder(handle_unknown="ignore")),
+  ])
+  transformers.append(("boolean", bool_pipeline, 
+                       ["Dependents", "PaperlessBilling", "Partner", "PhoneService", "SeniorCitizen"]))
+
+  numerical_pipeline = Pipeline(steps=[
+      ("converter", FunctionTransformer(lambda df: df.apply(pd.to_numeric, errors="coerce"))),
+      ("imputer", SimpleImputer(strategy="mean"))
+  ])
+  transformers.append(("numerical", numerical_pipeline, 
+                       ["AvgPriceIncrease", "Contract", "MonthlyCharges", "NumOptionalServices", "TotalCharges", "tenure"]))
+
+  one_hot_pipeline = Pipeline(steps=[
+      ("imputer", SimpleImputer(missing_values=None, strategy="constant", fill_value="")),
+      ("onehot", OneHotEncoder(handle_unknown="ignore"))
+  ])
+  transformers.append(("onehot", one_hot_pipeline, 
+                       ["DeviceProtection", "InternetService", "MultipleLines", "OnlineBackup", \
+                        "OnlineSecurity", "PaymentMethod", "StreamingMovies", "StreamingTV", "TechSupport", "gender"]))
+
+  
+  if 'max_depth' in params: 
+      # hyperopt supplies values as float but must be int
+      params['max_depth']=int(params['max_depth'])   
+  if 'min_child_weight' in params: 
+      # hyperopt supplies values as float but must be int
+      params['min_child_weight']=int(params['min_child_weight']) 
+  if 'max_delta_step' in params: 
+      # hyperopt supplies values as float but must be int
+      params['max_delta_step']=int(params['max_delta_step']) 
+      
+  # all other hyperparameters are taken as given by hyperopt
+  xgb_classifier = XGBClassifier(**params)
+
+  return Pipeline([
+      ("preprocessor", ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=0)),
+      ("standardizer", StandardScaler()),
+      ("classifier", xgb_classifier),
+  ])
 
 # COMMAND ----------
 

@@ -1,0 +1,32 @@
+experiment-path: "/Shared/dbx/projects/"
+model-name: "churn_mlops"
+model-stage : "Production"
+
+output-format: "delta"
+output-path: "dbfs:/dbx/tmp/test/churn_mlops"
+db-name : "churn_mlops"
+
+input-format: "delta"
+input-path: "churn_mlops.trainDF"
+test-path: "churn_mlops.testDF"
+scoring-input-path: "churn_mlops.trainDF"
+scoring-predictions-path: "churn_mlops.predictionsDF"
+
+fraction : 0.8
+seed: 42483
+
+params-colsample_bylevel: 0.79
+params-colsample_bynode: 0.26
+params-colsample_bytree: 0.75
+params-gamma: 0.879
+params-learning_rate: 0.072
+params-max_depth: 27.0
+params-min_child_weight: 3.0
+params-scale_pos_weight: 3
+params-subsample: 0.25
+params-eval_metric: 'aucpr'
+params-tree_method: 'hist'
+params-n_estimators: 200
+params-silent: 1
+
+databricks-host: "https://e2-demo-field-eng.cloud.databricks.com/"

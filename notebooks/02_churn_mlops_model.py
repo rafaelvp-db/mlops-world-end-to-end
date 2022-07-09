@@ -12,20 +12,17 @@ db_name = dbutils.widgets.get("db_name")
 
 # COMMAND ----------
 
-from utils import export_df
+from utils import export_df, compute_weights
 
 # COMMAND ----------
+
+import numpy as np
 
 # reading back the Delta table and calling a data4train -> can be a class then
 print("Preparing X and y")
 X_train, y_train = export_df(f"{db_name}.training")
-# scale = np.round(weight_compute(y_train),3) # scale can be places also inside the parameters then 
-#print(f"Our target is imbalanced, computing the scale is {scale}")
-
-
-# COMMAND ----------
-
-pd.concat([X_train, y_train], axis=1)
+scale = np.round(compute_weights(y_train), 3) # scale can be places also inside the parameters then 
+print(f"Our target is imbalanced, computing the scale is {scale}")
 
 # COMMAND ----------
 
@@ -39,6 +36,14 @@ pd.concat([X_train, y_train], axis=1)
 
 # COMMAND ----------
 
+
+
+# COMMAND ----------
+
+from hyperopt import hp, fmin, tpe, SparkTrials, space_eval
+import mlflow
+from utils import train_model
+
 # define hyperopt search space
 search_space = {
     'max_depth' : hp.quniform('max_depth', 5, 30, 1)                                  # depth of trees (preference is for shallow trees or even stumps (max_depth=1))
@@ -50,14 +55,34 @@ search_space = {
     ,'colsample_bylevel': hp.loguniform('colsample_bylevel', np.log(0.1), np.log(1.0))# proportion of columns to use per level
     ,'colsample_bynode' : hp.loguniform('colsample_bynode', np.log(0.1), np.log(1.0)) # proportion of columns to use per node
     ,'scale_pos_weight' : hp.loguniform('scale_pos_weight', np.log(1), np.log(scale * 10))   # weight to assign positive label to manage imbalance
-    }
+}
 
-best_params = fmin(fn=train_model,
-                   space=search_space,
-                   algo=tpe.suggest,
-                   max_evals=36,
-                   trials=SparkTrials(parallelism=2)
-                  )
+def train_wrapper(params):
+  return train_model(params, X_train, y_train)
+
+experiment_name = "telco_churn_mlops_experiment"
+experiment_path = f"/Shared/{experiment_name}"
+experiment_id = mlflow.create_experiment(experiment_path)
+
+with mlflow.start_run(experiment_id = experiment_id) as run:
+
+  best_params = fmin(
+    fn = train_wrapper,
+    space = search_space,
+    algo = tpe.suggest,
+    max_evals = 36,
+    trials = SparkTrials(parallelism=2)
+  )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC 
+# MAGIC ## Finding the experiment with the best metrics
+
+# COMMAND ----------
+
+#TODO
 
 # COMMAND ----------
 

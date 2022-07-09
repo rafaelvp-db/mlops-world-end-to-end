@@ -38,7 +38,7 @@ from mlflow.types.schema import Schema, ColSpec
 from hyperopt import hp, fmin, tpe, SparkTrials, STATUS_OK, space_eval
 
 
-def stratified_split_train_test(df, frac, label, join_on, seed=42):
+def stratified_split_train_test(df, label, join_on, seed=42, frac = 0.1):
     """ 
     Stratfied split of a Spark DataDrame into a Train and Test sets
     """

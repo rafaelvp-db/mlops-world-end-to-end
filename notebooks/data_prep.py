@@ -9,15 +9,17 @@
 # DBTITLE 1,Declaring our input widgets
 dbutils.widgets.text("reinitialize", "True")
 dbutils.widgets.text("db_name", "telcochurndb")
-dbutils.widgets.text("input_data_path", "telcochurndb")
+dbutils.widgets.text("input_data_path", "dbfs:/tmp/ibm_telco_churn.csv")
 
 reinitialize = bool(dbutils.widgets.get("reinitialize"))
 db_name = dbutils.widgets.get("db_name")
+input_data_path = dbutils.widgets.get("input_data_path")
+
 
 # COMMAND ----------
 
 # DBTITLE 1,Importing our library
-from scripts import stratified_split_train_test
+from utils import stratified_split_train_test, write_into_delta_table
 
 # COMMAND ----------
 
@@ -25,19 +27,12 @@ if reinitialize:
   spark.sql(f"drop database if exists {db_name}")
   spark.sql(f"create database {db_name}")
 
-#telco_df_raw = spark.read.option("header", True).option("inferSchema", True).csv(DATA_LOAD)
-telco_df_raw = spark.read.table("sr_ibm_telco_churn.bronze_customers")
+telco_df_raw = spark.read.option("header", True).csv(input_data_path)
 df_train, df_test = stratified_split_train_test(
   df = telco_df_raw,
-  frac=FRACTION,
   label="Churn",
   join_on="customerID",
-  seed=SEED
 )
 
-writeIntoDeltaTable(df_train, f"{db_name}.training")
-writeIntoDeltaTable(df_test, f"{db_name}.testing")
-
-# COMMAND ----------
-
-
+write_into_delta_table(df_train, f"{db_name}.training")
+write_into_delta_table(df_test, f"{db_name}.testing")

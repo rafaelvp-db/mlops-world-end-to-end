@@ -10,7 +10,8 @@ def save_model(
     preprocessor_pipeline,
     artifacts_folder = "artifacts",
     preprocessor_artifact_path = "/tmp/preprocessor.pkl",
-    model_artifact_path = "/tmp/xgb.pkl"
+    model_artifact_path = "/tmp/xgb.pkl",
+    pip_requirements = ["sklearn", "pandas", "xgboost"]
 ):
     full_remote_path = f"runs://{run_id}/{artifacts_folder}"
     with open(model_artifact_path, "wb") as model_file:
@@ -29,6 +30,8 @@ def save_model(
         python_model = SklearnModelWrapper(),
         code_path = ["./xgb_wrapper.py"],
         artifacts = artifacts,
+        pip_requirements = pip_requirements
+
     )
         
     return model_info

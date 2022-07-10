@@ -35,5 +35,6 @@ mlruns/
 
 
 .venv
-
 .egg-info
+
+metastore_db

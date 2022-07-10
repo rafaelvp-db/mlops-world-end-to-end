@@ -165,7 +165,7 @@ def train_model(params, X_train, y_train):
     return { 'status': STATUS_OK, 'loss': loss }
 
 
-def build_model(params) -> Pipeline:
+def build_preprocessor() -> Pipeline:
     """
         Builds model.
         :params dict: all hyperparameters of the model
@@ -197,6 +197,16 @@ def build_model(params) -> Pipeline:
                         ["DeviceProtection", "InternetService", "MultipleLines", "OnlineBackup", \
                         "OnlineSecurity", "PaymentMethod", "StreamingMovies", "StreamingTV", "TechSupport", "gender"]))
 
+    
+
+    return Pipeline([
+        ("preprocessor", ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=0)),
+        ("standardizer", StandardScaler()),
+    ])
+
+
+def build_model(params):
+
     if 'max_depth' in params: 
         # hyperopt supplies values as float but must be int
         params['max_depth']=int(params['max_depth'])   
@@ -210,10 +220,6 @@ def build_model(params) -> Pipeline:
     # all other hyperparameters are taken as given by hyperopt
     xgb_classifier = XGBClassifier(**params)
 
-    return Pipeline([
-        ("preprocessor", ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=0)),
-        ("standardizer", StandardScaler()),
-        ("classifier", xgb_classifier),
-    ])
+    return xgb_classifier
 
 

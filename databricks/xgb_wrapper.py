@@ -19,8 +19,8 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
           context: MLflow context where the model artifact is stored.
     """
 
-    self._preprocessor = pickle.load(context["preprocessor-path"])
-    self._model = pickle.load(context["model-path"])
+    self._preprocessor = pickle.load(context.artifacts["preprocessor-path"])
+    self._model = pickle.load(context.artifacts["model-path"])
 
   
   def predict(self, context, model_input):

@@ -66,7 +66,7 @@ with mlflow.start_run(experiment_id = experiment_id) as run:
     space = search_space,
     algo = tpe.suggest,
     max_evals = 10,
-    trials = SparkTrials(parallelism=10)
+    trials = SparkTrials(parallelism=5)
   )
 
 # COMMAND ----------
@@ -111,7 +111,8 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
   
   # preprocess features and train
   preprocessor_pipeline = build_preprocessor()
-  xgb_model_best = build_model(parsed_params) 
+  xgb_model_best = build_model(parsed_params)
+  print(X_train.columns)
   preprocessed_features = preprocessor_pipeline.fit_transform(X_train)
   xgb_model_best.fit(preprocessed_features, y_train)
   # predict
@@ -143,20 +144,22 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
 
 # COMMAND ----------
 
-
 model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri)
 
 # COMMAND ----------
 
-df = spark.sql("select * from telcochurndb.testing").toPandas().sample(1)
+X_test, y_test = export_df("telcochurndb.testing")
 
 # COMMAND ----------
 
-df
+def generate_prediction(model, X):
+  
+  dict_input = X.to_dict(orient="records")
+  prediction = model.predict(dict_input)
+  return prediction
 
-# COMMAND ----------
-
-model.predict(df)
+pred = generate_prediction(model, X_test.sample(1))
+print(pred)
 
 # COMMAND ----------
 

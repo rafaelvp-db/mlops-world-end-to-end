@@ -39,6 +39,7 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
     input_df = pd.DataFrame(model_input)
     preprocessed_input = self._preprocessor.transform(input_df)
     result = self._model.predict_proba(preprocessed_input)
+    return result
   
 
 def _load_pyfunc(data_path):

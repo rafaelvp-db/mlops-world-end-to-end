@@ -1,6 +1,13 @@
 # Databricks notebook source
 dbutils.widgets.text("db_name", "telcochurndb")
+dbutils.widgets.text("run_name", "XGB Final Model")
+dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
+dbutils.widgets.text("model_name", "telco_churn_model")
+
+run_name = dbutils.widgets.get("run_name")
 db_name = dbutils.widgets.get("db_name")
+experiment_name = dbutils.widgets.get("experiment_name")
+model_name = dbutils.widgets.get("model_name")
 
 # COMMAND ----------
 
@@ -54,7 +61,6 @@ search_space = {
 def train_wrapper(params):
   return train_model(params, X_train, y_train)
 
-experiment_name = "telco_churn_mlops_experiment"
 experiment_path = f"/Shared/{experiment_name}"
 experiment_id = mlflow.get_experiment_by_name(experiment_name)
 #experiment_id = mlflow.create_experiment(experiment_path)
@@ -104,7 +110,7 @@ from hyperopt import space_eval
 # configure params
 params = space_eval(search_space, parsed_params)
 # train model with optimal settings 
-with mlflow.start_run(run_name='XGB Final Model') as run:
+with mlflow.start_run(run_name = run_name) as run:
   
   # capture run info for later use
   run_id = run.info.run_id
@@ -112,7 +118,6 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
   # preprocess features and train
   preprocessor_pipeline = build_preprocessor()
   xgb_model_best = build_model(parsed_params)
-  print(X_train.columns)
   preprocessed_features = preprocessor_pipeline.fit_transform(X_train)
   xgb_model_best.fit(preprocessed_features, y_train)
   # predict
@@ -132,7 +137,6 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
     run_id = run_id,
     preprocessor_pipeline = preprocessor_pipeline
   )
-  model_name = "telco_churn_model"
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)
   
   print('Model logged under run_id "{0}" with AP score of {1:.5f}'.format(run_id, model_ap))
@@ -141,10 +145,6 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
 
 # MAGIC %md 
 # MAGIC ### Visualize the predictions from our best model 
-
-# COMMAND ----------
-
-model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri)
 
 # COMMAND ----------
 
@@ -158,8 +158,13 @@ def generate_prediction(model, X):
   prediction = model.predict(dict_input)
   return prediction
 
+model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri)
 pred = generate_prediction(model, X_test.sample(1))
 print(pred)
+
+# COMMAND ----------
+
+model_info.model_uri
 
 # COMMAND ----------
 

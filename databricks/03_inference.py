@@ -47,15 +47,7 @@ def setup_mlflow_conf(conf):
 
 # COMMAND ----------
 
-def clean_params(params):
-    """
-    XBGboost requires a particular format of inputs
-    """
-    if 'max_depth' in params: params['max_depth']=int(params['max_depth'])   
-    if 'min_child_weight' in params: params['min_child_weight']=int(params['min_child_weight']) 
-    if 'max_delta_step' in params: params['max_delta_step']=int(params['max_delta_step'])  
-    if 'n_estimators' in params: params['n_estimators']=int(params['n_estimators'])
-    return params
+
 
 # COMMAND ----------
 

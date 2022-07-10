@@ -161,11 +161,3 @@ def generate_prediction(model, X):
 model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri)
 pred = generate_prediction(model, X_test.sample(1))
 print(pred)
-
-# COMMAND ----------
-
-model_info.model_uri
-
-# COMMAND ----------
-
-

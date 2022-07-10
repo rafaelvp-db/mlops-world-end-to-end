@@ -167,6 +167,18 @@ def train_model(params, X_train, y_train):
     return { 'status': STATUS_OK, 'loss': loss }
 
 
+def to_object(df):
+
+    df = df.astype(object)
+    return df
+
+def to_numeric(df):
+
+    df = df.apply(pd.to_numeric, errors="coerce")
+    return df
+
+
+
 def build_preprocessor() -> Pipeline:
     """
         Builds model.
@@ -177,17 +189,19 @@ def build_preprocessor() -> Pipeline:
     transformers = []
 
     bool_pipeline = Pipeline(steps=[
-        ("cast_type", FunctionTransformer(lambda df: df.astype(object))),
+        ("cast_type", FunctionTransformer(to_object)),
         ("imputer", SimpleImputer(missing_values=None, strategy="most_frequent")),
         ("onehot", OneHotEncoder(handle_unknown="ignore")),
     ])
+
     transformers.append(("boolean", bool_pipeline, 
                         ["Dependents", "PaperlessBilling", "Partner", "PhoneService", "SeniorCitizen"]))
 
     numerical_pipeline = Pipeline(steps=[
-        ("converter", FunctionTransformer(lambda df: df.apply(pd.to_numeric, errors="coerce"))),
+        ("converter", FunctionTransformer(to_numeric)),
         ("imputer", SimpleImputer(strategy="mean"))
     ])
+
     transformers.append(("numerical", numerical_pipeline, 
                         ["AvgPriceIncrease", "Contract", "MonthlyCharges", "NumOptionalServices", "TotalCharges", "tenure"]))
 

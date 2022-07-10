@@ -1,6 +1,6 @@
 """Unit tests for our Utils module"""
 
-from databricks import utils
+from notebooks import utils
 
 
 def test_module():
@@ -12,7 +12,5 @@ def test_module():
     export_df = utils.export_df
     compute_weights = utils.compute_weights
     write_into_delta_table = utils.write_into_delta_table
-    train_model = utils.train_model
-    build_model = utils.build_pipeline
 
     pass

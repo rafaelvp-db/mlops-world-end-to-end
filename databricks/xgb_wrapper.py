@@ -19,17 +19,9 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
           context: MLflow context where the model artifact is stored.
     """
 
+    self._preprocessor = pickle.load(context["preprocessor-path"])
     self._model = pickle.load(context["model-path"])
 
-  
-  #def model_train(self, params):
-    #TODO   
-    #params = clean_params(params)
-    #self.model = XGBClassifier(**params)
-    #return self.model
-  
-  #def model_call(self, model_name, stage):
-    #pass
   
   def predict(self, context, model_input):
     """This is an abstract function. We customized it into a method to fetch the Hugging Face model.
@@ -40,25 +32,11 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
           [type]: the prediction result.
     """
 
-    #feature_prep_pipeline = self.get_feature_prep_pipeline()
     input_df = pd.DataFrame.from_dict(model_input, orient="records")
-    result = self._model.fit_transform(input_df)
-    
-    """if self.retrain: 
-      
-      with mlflow.start_run(experiment_id=self.experimentID, run_name='xgb_cl'):
-        model = self.model_train(self.params)
-        evaluation = [(X_prep, y)]
-        model.fit(X_prep, y,
-                  eval_set=evaluation,
-                  eval_metric=self.params['eval_metric'])
-        predictions = model.predict_proba(X_prep)[:,1]
-        return predictions 
-        
-    else: """
-    #model = self.model_call(self.model_name, self.model_stage)
-    prediction = self._model.predict_proba(X_prep)
-    return prediction
+    preprocessed_input = self._preprocessor.transform(input_df)
+    result = self._model.predict_proba(preprocessed_input)
+  
+    return result
       
     """
     Place here the MLFlow registry part 
@@ -69,4 +47,4 @@ def _load_pyfunc(data_path):
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
     """
-    return SklearnModelWrapper(data_path)
+    return SklearnModelWrapper()

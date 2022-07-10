@@ -19,7 +19,6 @@ model_name = dbutils.widgets.get("model_name")
 
 # COMMAND ----------
 
-from databricks.mlflow_utils import save_model
 from databricks.utils import export_df, compute_weights
 import numpy as np
 
@@ -94,7 +93,7 @@ def try_parse(str_value) -> float:
   return result
 
 df = mlflow.search_runs(filter_string="metrics.loss < 1")
-best_run_id = df.sort_values("metrics.loss", ascending = True)["run_id"].values[0]
+best_run_id = df.sort_values("metrics.train.log_loss", ascending = True)["run_id"].values[0]
 params_dict = mlflow.get_run(run_id = best_run_id).data.params
 parsed_params = dict([(item[0], try_parse(item[1])) for item in params_dict.items()])
 print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
@@ -103,7 +102,6 @@ print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
 
 from mlflow.models.signature import infer_signature
 from utils import build_pipeline
-from databricks.mlflow_utils import save_model
 from sklearn.metrics import average_precision_score, accuracy_score, log_loss
 from hyperopt import space_eval
 
@@ -164,3 +162,7 @@ with mlflow.start_run(run_name = run_name) as run:
 
 model = mlflow.sklearn.load_model(model_uri = model_info.model_uri)
 model.predict(X_test)
+
+# COMMAND ----------
+
+#TODO

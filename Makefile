@@ -1,3 +1,5 @@
+phony: utils wrapper
+
 env:
 	python -m venv .venv && \
 	source .venv/bin/activate && \
@@ -10,3 +12,7 @@ utils:
 
 wrapper:
 	rm -rf metastore_db && source .venv/bin/activate && pytest ./tests/unit/test_wrapper.py
+
+
+model:
+	make utils && make wrapper

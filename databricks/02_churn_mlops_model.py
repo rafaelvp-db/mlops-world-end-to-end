@@ -67,7 +67,7 @@ with mlflow.start_run(experiment_id = experiment_id) as run:
     fn = train_wrapper,
     space = search_space,
     algo = tpe.suggest,
-    max_evals = 36,
+    max_evals = 10,
     trials = SparkTrials(parallelism=10)
   )
 
@@ -97,28 +97,39 @@ print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
 # COMMAND ----------
 
 from xgb_wrapper import SklearnModelWrapper
+import pickle
 
 def save_model(
     model,
-    run_id,
-    model_name: str = "mymodel"
+    preprocessor_pipeline,
+    artifacts_path = "/artifacts/",
+    preprocessor_artifact_path = "/dbfs/tmp/preprocessor.pkl",
+    model_artifact_path = "/dbfs/tmp/xgb.pkl"
 ):
-    artifact_path = f"runs://{run_id}/"
-    model_path = artifact_path + "model"
-
+    with open(model_artifact_path, "wb") as model_file:
+      pickle.dump(model, model_file)
+      
+    with open(preprocessor_artifact_path, "wb") as preprocessor_file:
+      pickle.dump(preprocessor_pipeline, preprocessor_file)
+  
     artifacts = {
-      "model_path": model_path
+      "preprocessor": f"{artifacts_path}/{preprocessor_artifact_path}",
+      "model": f"{artifacts_path}/{model_artifact_path}"
     }
-    mlflow_pyfunc_model_path = model_name
-
     
+    model_info = mlflow.pyfunc.log_model(
+        artifact_path = artifacts_path,
+        python_model = SklearnModelWrapper(),
+        code_path = ["./xgb_wrapper.py"],
+        artifacts = artifacts,
+    )
         
     return model_info
 
 # COMMAND ----------
 
 from mlflow.models.signature import infer_signature
-from utils import build_model
+from utils import build_model, build_preprocessor
 from sklearn.metrics import average_precision_score, accuracy_score, log_loss
 from hyperopt import space_eval
 
@@ -132,31 +143,25 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
   run_id = run.info.run_id
   
   # preprocess features and train
+  preprocessor_pipeline = build_preprocessor()
   xgb_model_best = build_model(parsed_params) 
-  xgb_model_best.fit(X_train, y_train)
+  preprocessed_features = preprocessor.fit_transform(X_train)
+  xgb_model_best.fit(preprocessed_features, y_train)
   # predict
-  y_prob = xgb_model_best.predict_proba(X_train)
+  y_prob = xgb_model_best.predict_proba(preprocessed_features)
   # score
   model_ap = average_precision_score(y_train, y_prob[:,1])
-  model_accuracy = accuracy_score(y_train, xgb_model_best.predict(X_train))
+  model_accuracy = accuracy_score(y_train, xgb_model_best.predict(preprocessed_features))
   loss = log_loss(y_train, y_prob)
   mlflow.log_metrics({'log_loss': loss,
                       'avg_precision': model_ap,
                       'accuracy': model_accuracy }
                     )
   mlflow.log_params(params)
-  
-  #signature= infer_signature(X_train, y_train)
-  #print(f"X_train: {X_train}")
-  #input_example = X_train.drop,
-  #signature=infer_signature(X_train, y_train)
   print('Xgboost Trained with XGBClassifier')
-  #mlflow.sklearn.log_model(xgb_model_best, 'xgb_pipeline', 
-                           #registered_model_name = 'xbg_pipeline',
-                           #input_example=input_example, signature=signature)  # persist model with mlflow
-  model_info = mlflow.sklearn.log_model(
-    sk_model = xgb_model_best,
-    artifact_path = "model"
+  save_model(
+    model = xgb_model_best,
+    preprocessor_pipeline = preprocessor_pipeline
   )
   model_name = "telco_churn_model"
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)

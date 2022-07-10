@@ -11,7 +11,7 @@ def save_model(
     artifacts_folder = "artifacts",
     preprocessor_artifact_path = "/tmp/preprocessor.pkl",
     model_artifact_path = "/tmp/xgb.pkl",
-    pip_requirements = ["sklearn", "pandas", "xgboost"]
+    pip_requirements = ["scikit-learn", "pandas", "xgboost"]
 ):
     full_remote_path = f"runs://{run_id}/{artifacts_folder}"
     with open(model_artifact_path, "wb") as model_file:

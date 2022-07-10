@@ -61,6 +61,6 @@ def test_module():
 
     params = {"test_param": "test_param"}
 
-    wrapper = SklearnModelWrapper(conf = conf, params = params, spark = spark)
+    wrapper = SklearnModelWrapper()
 
     pass

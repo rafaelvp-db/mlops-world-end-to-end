@@ -96,11 +96,10 @@ while not endpoint_enabled:
 version_endpoint_enabled = False
 attempt_number = 1
 
-max_attempts = 100
+max_attempts = 1000
 
 while not version_endpoint_enabled:
-  time.sleep(10)
-  print(f"Checking if Endpoint Version was enabled, attempt {attempt_number}...")
+  print(f"Checking if Endpoint for Version {target_version} was enabled, attempt {attempt_number}...")
   endpoint_path = "/mlflow/endpoints-v2/get-version-status"
   full_url = f"{host}{endpoint_path}"
   payload["endpoint_version_name"] = target_version
@@ -109,12 +108,13 @@ while not version_endpoint_enabled:
   status = json_response["endpoint_status"]["service_status"]["state"]
   message = json_response["endpoint_status"]["service_status"]["message"]
   print(f"Current endpoint status: {status}, message: {message}")
-  if status == "ENDPOINT_STATE_READY":
-    endpoint_enabled = True
-    print("Endpoint is enabled, exiting...")
   attempt_number += 1
   if attempt_number >= max_attempts:
-    raise ValueError("Max attempts reached")
+    raise ValueError(f"Max attempts reached, last status: {status}")
+  if status != "SERVICE_STATE_PENDING":
+    print(f"Status: {status}, exiting...")
+    pass
+  time.sleep(10)
 
 # COMMAND ----------
 

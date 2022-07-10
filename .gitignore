@@ -35,7 +35,7 @@ mlruns/
 
 
 .venv
-.egg-info
+*.egg-info
 
 metastore_db
 
@@ -43,3 +43,5 @@ derby.log
 .coveragerc
 __pycache__
 *.pyc
+*/__pycache__
+*/.pytest_cache

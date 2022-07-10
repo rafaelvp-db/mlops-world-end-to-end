@@ -149,11 +149,11 @@ def train_model(params, X_train, y_train):
     model = build_pipeline(params)
     model.fit(X_train, y_train)
     prob = model.predict_proba(X_train)
-    loss = log_loss(y_train, prob)
+    loss = log_loss(y_train, prob[:, 1])
     mlflow.log_metrics(
         {
             'log_loss': loss,
-            'accuracy': accuracy_score(y_train, np.round(prob))
+            'accuracy': accuracy_score(y_train, np.round(prob[:, 1]))
         }
     )
     return { 'status': STATUS_OK, 'loss': loss }

@@ -38,3 +38,6 @@ mlruns/
 .egg-info
 
 metastore_db
+
+derby.log
+.coveragerc

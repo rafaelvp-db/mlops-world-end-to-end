@@ -173,9 +173,9 @@ def to_numeric(df):
 
 
 
-def build_preprocessor() -> Pipeline:
+def build_pipeline(params) -> Pipeline:
     """
-        Builds model.
+        Builds pipeline.
         :params dict: all hyperparameters of the model
         :return Pipeline: returns an sklearn Pipeline object 
     """
@@ -207,15 +207,16 @@ def build_preprocessor() -> Pipeline:
                         ["DeviceProtection", "InternetService", "MultipleLines", "OnlineBackup", \
                         "OnlineSecurity", "PaymentMethod", "StreamingMovies", "StreamingTV", "TechSupport", "gender"]))
 
-    
+    model = _build_model(params)
 
     return Pipeline([
         ("preprocessor", ColumnTransformer(transformers, remainder="passthrough", sparse_threshold=0)),
         ("standardizer", StandardScaler()),
+        ("XGBClassifier", model)
     ])
 
 
-def build_model(params):
+def _build_model(params):
 
     if 'max_depth' in params: 
         # hyperopt supplies values as float but must be int

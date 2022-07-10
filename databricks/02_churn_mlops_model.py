@@ -26,6 +26,7 @@ import numpy as np
 # reading back the Delta table and calling a data4train -> can be a class then
 print("Preparing X and y")
 X_train, y_train = export_df(f"{db_name}.training")
+X_test, y_test = export_df(f"{db_name}.testing")
 scale = np.round(compute_weights(y_train), 3) # scale can be places also inside the parameters then 
 print(f"Our target is imbalanced, computing the scale is {scale}")
 
@@ -101,11 +102,23 @@ print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
 # COMMAND ----------
 
 from mlflow.models.signature import infer_signature
-from utils import build_model, build_preprocessor
+from utils import build_pipeline
 from databricks.mlflow_utils import save_model
 from sklearn.metrics import average_precision_score, accuracy_score, log_loss
 from hyperopt import space_eval
 
+
+def calculate_metrics(target_metrics: dict, predicted, labels, stage = "train"):
+  
+  metric_results = {}
+  for key in target_metrics.keys():
+    if "accuracy" in key:
+      metric_value = target_metrics[key](labels, np.round(predicted[:,1]))
+    else:
+      metric_value = target_metrics[key](labels, predicted[:,1])
+    metric_results[f"{stage}.{key}"] = metric_value
+  
+  return metric_results
 
 # configure params
 params = space_eval(search_space, parsed_params)
@@ -116,30 +129,31 @@ with mlflow.start_run(run_name = run_name) as run:
   run_id = run.info.run_id
   
   # preprocess features and train
-  preprocessor_pipeline = build_preprocessor()
-  xgb_model_best = build_model(parsed_params)
-  preprocessed_features = preprocessor_pipeline.fit_transform(X_train)
-  xgb_model_best.fit(preprocessed_features, y_train)
+  xgb_model_best = build_pipeline(parsed_params)
+  xgb_model_best.fit(X_train, y_train)
   # predict
-  y_prob = xgb_model_best.predict_proba(preprocessed_features)
+  pred_train = xgb_model_best.predict_proba(X_train)
   # score
-  model_ap = average_precision_score(y_train, y_prob[:,1])
-  model_accuracy = accuracy_score(y_train, xgb_model_best.predict(preprocessed_features))
-  loss = log_loss(y_train, y_prob)
-  mlflow.log_metrics({'log_loss': loss,
-                      'avg_precision': model_ap,
-                      'accuracy': model_accuracy }
-                    )
-  mlflow.log_params(params)
-  print('Xgboost Trained with XGBClassifier')
-  model_info = save_model(
-    model = xgb_model_best,
-    run_id = run_id,
-    preprocessor_pipeline = preprocessor_pipeline
-  )
-  version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)
+  target_metrics = {
+    
+    "train.average_precision_score": average_precision_score,
+    "train.accuracy_score": accuracy_score,
+    "train.log_loss": log_loss
+  }
   
-  print('Model logged under run_id "{0}" with AP score of {1:.5f}'.format(run_id, model_ap))
+  train_metrics = calculate_metrics(target_metrics, pred_train, y_train, "train")
+  pred_test = xgb_model_best.predict_proba(X_test)
+  test_metrics = calculate_metrics(target_metrics, pred_test, y_test, "test")
+  
+  mlflow.log_metrics(train_metrics)
+  mlflow.log_metrics(test_metrics)
+  mlflow.log_params(params)
+  model_info = mlflow.sklearn.log_model(xgb_model_best, artifact_path = "model")
+  print('Xgboost Trained with XGBClassifier')
+  version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)
+  print(f"Model logged under run_id: {run_id}")
+  print(f"Train metrics: {train_metrics}")
+  print(f"Test metrics: {test_metrics}")
 
 # COMMAND ----------
 
@@ -148,16 +162,5 @@ with mlflow.start_run(run_name = run_name) as run:
 
 # COMMAND ----------
 
-X_test, y_test = export_df("telcochurndb.testing")
-
-# COMMAND ----------
-
-def generate_prediction(model, X):
-  
-  dict_input = X.to_dict(orient="records")
-  prediction = model.predict(dict_input)
-  return prediction
-
-model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri)
-pred = generate_prediction(model, X_test.sample(1))
-print(pred)
+model = mlflow.sklearn.load_model(model_uri = model_info.model_uri)
+model.predict(X_test)

@@ -62,10 +62,11 @@ def train_wrapper(params):
   return train_model(params, X_train, y_train)
 
 experiment_path = f"/Shared/{experiment_name}"
-experiment_id = mlflow.get_experiment_by_name(experiment_name)
-#experiment_id = mlflow.create_experiment(experiment_path)
+experiment = mlflow.get_experiment_by_name(experiment_path)
+if not experiment:
+  experiment = mlflow.create_experiment(name = experiment_path)
 
-with mlflow.start_run(experiment_id = experiment_id) as run:
+with mlflow.start_run(experiment_id = experiment.experiment_id) as run:
 
   best_params = fmin(
     fn = train_wrapper,
@@ -92,7 +93,7 @@ def try_parse(str_value) -> float:
     print(f"{str_value} can't be parsed to float, returning string...")
   return result
 
-df = mlflow.search_runs(filter_string="metrics.train.log_loss < 1")
+df = mlflow.search_runs(filter_string="status = 'FINISHED'")
 best_run_id = df.sort_values("metrics.train.log_loss", ascending = True)["run_id"].values[0]
 params_dict = mlflow.get_run(run_id = best_run_id).data.params
 parsed_params = dict([(item[0], try_parse(item[1])) for item in params_dict.items()])
@@ -121,7 +122,7 @@ def calculate_metrics(target_metrics: dict, predicted, labels, stage = "train"):
 # configure params
 params = space_eval(search_space, parsed_params)
 # train model with optimal settings 
-with mlflow.start_run(run_name = run_name) as run:
+with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_name) as run:
   
   # capture run info for later use
   run_id = run.info.run_id
@@ -134,9 +135,9 @@ with mlflow.start_run(run_name = run_name) as run:
   # score
   target_metrics = {
     
-    "train.average_precision_score": average_precision_score,
-    "train.accuracy_score": accuracy_score,
-    "train.log_loss": log_loss
+    "average_precision_score": average_precision_score,
+    "accuracy_score": accuracy_score,
+    "log_loss": log_loss
   }
   
   train_metrics = calculate_metrics(target_metrics, pred_train, y_train, "train")
@@ -146,6 +147,7 @@ with mlflow.start_run(run_name = run_name) as run:
   mlflow.log_metrics(train_metrics)
   mlflow.log_metrics(test_metrics)
   mlflow.log_params(params)
+  mlflow.set_tag("best_model", "true")
   model_info = mlflow.sklearn.log_model(xgb_model_best, artifact_path = "model")
   print('Xgboost Trained with XGBClassifier')
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)
@@ -155,17 +157,12 @@ with mlflow.start_run(run_name = run_name) as run:
 
 # COMMAND ----------
 
+model_info
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC ### Visualize the predictions from our best model 
-
-# COMMAND ----------
-
-model = mlflow.sklearn.load_model(model_uri = model_info.model_uri)
-model.predict(X_test)
-
-# COMMAND ----------
-
-model_info.model_uri
 
 # COMMAND ----------
 

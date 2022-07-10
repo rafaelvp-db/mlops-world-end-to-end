@@ -25,7 +25,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import log_loss, accuracy_score, average_precision_score
 from sklearn.utils.class_weight import compute_class_weight, compute_sample_weight
 from xgboost import XGBClassifier
-from xgb_wrapper import SklearnModelWrapper
 
 
 def stratified_split_train_test(df, label, join_on, seed=42, frac = 0.1):
@@ -233,34 +232,5 @@ def build_model(params):
 
     return xgb_classifier
 
-
-def save_model(
-    model,
-    run_id,
-    preprocessor_pipeline,
-    artifacts_folder = "artifacts",
-    preprocessor_artifact_path = "/tmp/preprocessor.pkl",
-    model_artifact_path = "/tmp/xgb.pkl"
-):
-    full_remote_path = f"runs://{run_id}/{artifacts_folder}"
-    with open(model_artifact_path, "wb") as model_file:
-      pickle.dump(model, model_file)
-      
-    with open(preprocessor_artifact_path, "wb") as preprocessor_file:
-      pickle.dump(preprocessor_pipeline, preprocessor_file)
-  
-    artifacts = {
-      "preprocessor": preprocessor_artifact_path,
-      "model": model_artifact_path
-    }
-    
-    model_info = mlflow.pyfunc.log_model(
-        artifact_path = full_remote_path,
-        python_model = SklearnModelWrapper(),
-        code_path = ["./xgb_wrapper.py"],
-        artifacts = artifacts,
-    )
-        
-    return model_info
 
 

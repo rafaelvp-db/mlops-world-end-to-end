@@ -1,4 +1,4 @@
-phony: utils wrapper
+phony: utils wrapper mlflow
 
 env:
 	python -m venv .venv && \
@@ -11,8 +11,11 @@ utils:
 	source .venv/bin/activate && pytest ./tests/unit/test_utils.py
 
 wrapper:
-	rm -rf metastore_db && source .venv/bin/activate && pytest ./tests/unit/test_wrapper.py
+	source .venv/bin/activate && pytest ./tests/unit/test_wrapper.py
+
+mlflow:
+	source .venv/bin/activate && pytest ./tests/unit/test_mlflow_utils.py
 
 
 model:
-	make utils && make wrapper
+	make utils && make wrapper && make mlflow

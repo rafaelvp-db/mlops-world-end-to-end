@@ -36,10 +36,6 @@ print(f"Our target is imbalanced, computing the scale is {scale}")
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 from hyperopt import hp, fmin, tpe, SparkTrials, space_eval
 import mlflow
 from utils import train_model
@@ -62,7 +58,8 @@ def train_wrapper(params):
 
 experiment_name = "telco_churn_mlops_experiment"
 experiment_path = f"/Shared/{experiment_name}"
-experiment_id = mlflow.create_experiment(experiment_path)
+experiment_id = mlflow.get_experiment_by_name(experiment_name)
+#experiment_id = mlflow.create_experiment(experiment_path)
 
 with mlflow.start_run(experiment_id = experiment_id) as run:
 
@@ -71,7 +68,7 @@ with mlflow.start_run(experiment_id = experiment_id) as run:
     space = search_space,
     algo = tpe.suggest,
     max_evals = 36,
-    trials = SparkTrials(parallelism=2)
+    trials = SparkTrials(parallelism=10)
   )
 
 # COMMAND ----------
@@ -82,26 +79,52 @@ with mlflow.start_run(experiment_id = experiment_id) as run:
 
 # COMMAND ----------
 
-#TODO
+def try_parse(str_value) -> float:
+  
+  result = str_value
+  try:
+    result = float(str_value)
+  except ValueError:
+    print(f"{str_value} can't be parsed to float, returning string...")
+  return result
+
+df = mlflow.search_runs(filter_string="metrics.loss < 1")
+best_run_id = df.sort_values("metrics.loss", ascending = True)["run_id"].values[0]
+params_dict = mlflow.get_run(run_id = best_run_id).data.params
+parsed_params = dict([(item[0], try_parse(item[1])) for item in params_dict.items()])
+print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
 
 # COMMAND ----------
 
-params_dict = {'colsample_bylevel': 0.7897107311909447,
- 'colsample_bynode': 0.25823881509469926,
- 'colsample_bytree': 0.7553513300708579,
- 'gamma': 0.879,
- 'learning_rate': 0.07393402778392641,
- 'max_depth': 27.0,
- 'min_child_weight': 1.0,
- 'scale_pos_weight': 3.385912425949693,
- 'subsample': 0.2582555157290116}
+from xgb_wrapper import SklearnModelWrapper
+
+def save_model(
+    model,
+    run_id,
+    model_name: str = "mymodel"
+):
+    artifact_path = f"runs://{run_id}/"
+    model_path = artifact_path + "model"
+
+    artifacts = {
+      "model_path": model_path
+    }
+    mlflow_pyfunc_model_path = model_name
+
+    
+        
+    return model_info
 
 # COMMAND ----------
 
 from mlflow.models.signature import infer_signature
+from utils import build_model
+from sklearn.metrics import average_precision_score, accuracy_score, log_loss
+from hyperopt import space_eval
+
 
 # configure params
-params = space_eval(search_space, best_params) 
+params = space_eval(search_space, parsed_params)
 # train model with optimal settings 
 with mlflow.start_run(run_name='XGB Final Model') as run:
   
@@ -109,7 +132,7 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
   run_id = run.info.run_id
   
   # preprocess features and train
-  xgb_model_best = build_model(params) 
+  xgb_model_best = build_model(parsed_params) 
   xgb_model_best.fit(X_train, y_train)
   # predict
   y_prob = xgb_model_best.predict_proba(X_train)
@@ -124,33 +147,42 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
   mlflow.log_params(params)
   
   #signature= infer_signature(X_train, y_train)
-  input_example=X_train[:10],
-  signature=infer_signature(X_train, y_train)
+  #print(f"X_train: {X_train}")
+  #input_example = X_train.drop,
+  #signature=infer_signature(X_train, y_train)
   print('Xgboost Trained with XGBClassifier')
-  mlflow.sklearn.log_model(xgb_model_best, 'xgb_pipeline', 
-                           registered_model_name = 'xbg_pipeline',
-                           input_example=input_example, signature=signature)  # persist model with mlflow
+  #mlflow.sklearn.log_model(xgb_model_best, 'xgb_pipeline', 
+                           #registered_model_name = 'xbg_pipeline',
+                           #input_example=input_example, signature=signature)  # persist model with mlflow
+  model_info = mlflow.sklearn.log_model(
+    sk_model = xgb_model_best,
+    artifact_path = "model"
+  )
+  model_name = "telco_churn_model"
+  version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)
   
   print('Model logged under run_id "{0}" with AP score of {1:.5f}'.format(run_id, model_ap))
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ### Vis the prediction from our best model 
+# MAGIC ### Visualize the predictions from our best model 
 
 # COMMAND ----------
 
-# get the model 
-# run_id "6af44d640dec4c429709d2afce745d00"
-# vis the predictions + confusion matrix
+model = mlflow.sklearn.load_model(model_uri = model_info.model_uri)
 
 # COMMAND ----------
 
-
+df = spark.sql("select * from telcochurndb.testing").toPandas().sample(1)
 
 # COMMAND ----------
 
+df
 
+# COMMAND ----------
+
+model.predict(df)
 
 # COMMAND ----------
 

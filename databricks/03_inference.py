@@ -1,8 +1,4 @@
 # Databricks notebook source
-
-
-# COMMAND ----------
-
 # MAGIC %md 
 # MAGIC ### Simulating the config file read
 # MAGIC 

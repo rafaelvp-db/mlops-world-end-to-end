@@ -41,3 +41,5 @@ metastore_db
 
 derby.log
 .coveragerc
+__pycache__
+*.pyc

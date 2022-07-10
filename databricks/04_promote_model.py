@@ -24,11 +24,6 @@ best_run_id
 
 # COMMAND ----------
 
-model_uri = f"runs:/{best_run_id}/model"
-model = mlflow.sklearn.load_model(model_uri = model_uri)
-
-# COMMAND ----------
-
 from mlflow.tracking import MlflowClient
 client = MlflowClient()
 
@@ -43,6 +38,83 @@ if best_run_id == model_version_info.run_id:
     stage = "Production",
     archive_existing_versions = True
   )
+
+# COMMAND ----------
+
+#TODO
+
+#1. Activate serverless endpoint through the API
+#2. Keep poking it until it finishes activating the endpoint
+#3. Make sample requests to the API
+
+# COMMAND ----------
+
+# DBTITLE 1,Enable Endpoint
+import requests
+
+token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
+auth_header = {"Authorization" : "Bearer " + token}
+
+endpoint_path = "/mlflow/endpoints-v2/enable"
+payload = {
+  "registered_model_name": model_name
+}
+
+host = "https://e2-demo-field-eng.cloud.databricks.com/api/2.0"
+full_url = f"{host}{endpoint_path}"
+response = requests.post(url = full_url, json = payload, headers = auth_header)
+
+if response.status_code != 200:
+  raise ValueError("Error making POST request to Mlflow API")
+
+# COMMAND ----------
+
+# DBTITLE 1,Check Endpoint Status
+import time
+import json
+
+endpoint_enabled = False
+attempt_number = 1
+
+while not endpoint_enabled:
+  time.sleep(2)
+  print(f"Checking if Endpoint was enabled, attempt {attempt_number}...")
+  endpoint_path = "/mlflow/endpoints-v2/get-status"
+  full_url = f"{host}{endpoint_path}"
+  response = requests.get(url = full_url, json = payload, headers = auth_header)
+  json_response = json.loads(response.text)
+  status = json_response["endpoint_status"]["state"]
+  print(f"Current endpoint status: {status}")
+  if status == "ENDPOINT_STATE_READY":
+    endpoint_enabled = True
+    print("Endpoint is enabled, exiting...")
+  attempt_number += 1
+
+# COMMAND ----------
+
+# DBTITLE 1,Check Endpoint Version Status
+version_endpoint_enabled = False
+attempt_number = 1
+
+max_attempts = 100
+
+while not version_endpoint_enabled:
+  time.sleep(10)
+  print(f"Checking if Endpoint Version was enabled, attempt {attempt_number}...")
+  endpoint_path = "/mlflow/endpoints-v2/get-version-status"
+  full_url = f"{host}{endpoint_path}"
+  payload["endpoint_version_name"] = target_version
+  response = requests.get(url = full_url, json = payload, headers = auth_header)
+  json_response = json.loads(response.text)
+  status = json_response["endpoint_status"]["service_status"]["state"]
+  message = json_response["endpoint_status"]["service_status"]["message"]
+  print(f"Current endpoint status: {status}, message: {message}")
+  if status == "ENDPOINT_STATE_READY":
+    endpoint_enabled = True
+    print("Endpoint is enabled, exiting...")
+  attempt_number += 1
+  if attempt_number >= max_attempts:
+    raise ValueError("Max attempts reached")
 
 # COMMAND ----------
 

@@ -134,7 +134,6 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   pred_train = xgb_model_best.predict_proba(X_train)
   # score
   target_metrics = {
-    
     "average_precision_score": average_precision_score,
     "accuracy_score": accuracy_score,
     "log_loss": log_loss
@@ -148,7 +147,11 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   mlflow.log_metrics(test_metrics)
   mlflow.log_params(params)
   mlflow.set_tag("best_model", "true")
-  model_info = mlflow.sklearn.log_model(xgb_model_best, artifact_path = "model")
+  model_info = mlflow.sklearn.log_model(
+    sk_model = xgb_model_best,
+    artifact_path = "model",
+    pip_requirements = ["scikit-learn", "xgboost"]
+  )
   print('Xgboost Trained with XGBClassifier')
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)
   print(f"Model logged under run_id: {run_id}")
@@ -158,11 +161,6 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
 # COMMAND ----------
 
 model_info
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC ### Visualize the predictions from our best model 
 
 # COMMAND ----------
 

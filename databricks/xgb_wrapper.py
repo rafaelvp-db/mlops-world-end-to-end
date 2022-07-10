@@ -40,12 +40,6 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
     preprocessed_input = self._preprocessor.transform(input_df)
     result = self._model.predict_proba(preprocessed_input)
   
-    return result
-      
-    """
-    Place here the MLFlow registry part 
-    """
-    return self.model.predict_proba(X)[:,1]
 
 def _load_pyfunc(data_path):
     """

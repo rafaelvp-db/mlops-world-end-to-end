@@ -92,7 +92,7 @@ def try_parse(str_value) -> float:
     print(f"{str_value} can't be parsed to float, returning string...")
   return result
 
-df = mlflow.search_runs(filter_string="metrics.loss < 1")
+df = mlflow.search_runs(filter_string="metrics.train.log_loss < 1")
 best_run_id = df.sort_values("metrics.train.log_loss", ascending = True)["run_id"].values[0]
 params_dict = mlflow.get_run(run_id = best_run_id).data.params
 parsed_params = dict([(item[0], try_parse(item[1])) for item in params_dict.items()])
@@ -165,4 +165,8 @@ model.predict(X_test)
 
 # COMMAND ----------
 
-#TODO
+model_info.model_uri
+
+# COMMAND ----------
+
+

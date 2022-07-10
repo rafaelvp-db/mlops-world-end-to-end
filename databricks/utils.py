@@ -27,8 +27,6 @@ from xgboost import XGBClassifier
 
 
 from scipy import stats
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -102,7 +100,7 @@ def compute_service_features(sparkDF):
     return sparkDF  
 
 
-def export_df(tableName):
+def export_df(table_name):
     """
     Read Delta Table, compute features with prepare_features and compute_service_features
     then convert into Pandas DF select the main DF for train and validation
@@ -111,7 +109,7 @@ def export_df(tableName):
     :return: X and y pandas DF
     """
     spark = SparkSession.builder.getOrCreate()
-    telco_df = spark.read.format("delta").table(f"{tableName}")
+    telco_df = spark.read.format("delta").table(f"{table_name}")
 
     telco_df = prepare_features(telco_df)
     telco_df  = compute_service_features(telco_df)

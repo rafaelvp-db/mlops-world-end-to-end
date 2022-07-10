@@ -5,3 +5,9 @@ pyyaml
 pytest
 pytest-cov
 dbx
+delta-spark
+sklearn
+mlflow
+xgboost
+hyperopt
+pyarrow

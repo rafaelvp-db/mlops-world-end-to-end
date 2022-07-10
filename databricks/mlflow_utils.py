@@ -1,6 +1,7 @@
-import mlflow
+import pickle
 
 from databricks.xgb_wrapper import SklearnModelWrapper
+import mlflow
 
 
 def save_model(

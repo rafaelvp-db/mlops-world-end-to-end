@@ -19,7 +19,7 @@ model_name = dbutils.widgets.get("model_name")
 
 # COMMAND ----------
 
-from databricks.utils import export_df, compute_weights
+from utils import export_df, compute_weights
 import numpy as np
 
 # reading back the Delta table and calling a data4train -> can be a class then
@@ -119,6 +119,7 @@ def calculate_metrics(target_metrics: dict, predicted, labels, stage = "train"):
   
   return metric_results
 
+
 # configure params
 params = space_eval(search_space, parsed_params)
 # train model with optimal settings 
@@ -150,7 +151,6 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   model_info = mlflow.sklearn.log_model(
     sk_model = xgb_model_best,
     artifact_path = "model",
-    code_paths = ["./utils.py"],
     pip_requirements = ["scikit-learn", "xgboost"]
   )
   print('Xgboost Trained with XGBClassifier')
@@ -158,10 +158,6 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   print(f"Model logged under run_id: {run_id}")
   print(f"Train metrics: {train_metrics}")
   print(f"Test metrics: {test_metrics}")
-
-# COMMAND ----------
-
-model_info
 
 # COMMAND ----------
 

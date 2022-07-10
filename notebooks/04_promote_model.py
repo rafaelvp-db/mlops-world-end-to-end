@@ -1,9 +1,11 @@
 # Databricks notebook source
+dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("run_name", "XGB Final Model")
 dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
 dbutils.widgets.text("model_name", "telco_churn_model")
 
 run_name = dbutils.widgets.get("run_name")
+db_name = dbutils.widgets.get("db_name")
 experiment_name = dbutils.widgets.get("experiment_name")
 model_name = dbutils.widgets.get("model_name")
 
@@ -24,28 +26,52 @@ best_run_id
 
 # COMMAND ----------
 
+# DBTITLE 1,Transition to Staging
 from mlflow.tracking import MlflowClient
 client = MlflowClient()
 
 model_version_info = client.get_latest_versions(name = model_name, stages = ["None"])[0]
 target_version = None
+target_stage = "Staging"
 
 if best_run_id == model_version_info.run_id:
   target_version = model_version_info.version
   client.transition_model_version_stage(
     name = model_name,
     version = target_version,
-    stage = "Production",
-    archive_existing_versions = True
+    stage = target_stage
   )
+  
+print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
 
 # COMMAND ----------
 
-#TODO
+# DBTITLE 1,Test Predictions
+from utils import export_df
 
-#1. Activate serverless endpoint through the API
-#2. Keep poking it until it finishes activating the endpoint
-#3. Make sample requests to the API
+current_stage = target_stage
+model_version_info = client.get_latest_versions(name = model_name, stages = [current_stage])[0]
+
+model = mlflow.sklearn.load_model(model_uri = model_version_info.source)
+X_test, y_test = export_df(f"{db_name}.testing")
+pred = model.predict(X_test.sample(10))
+if pred is not None:
+  print("Predictions OK")
+  target_version = None
+  target_stage = "Production"
+
+# COMMAND ----------
+
+# DBTITLE 1,Promote to Production
+if best_run_id == model_version_info.run_id:
+  target_version = model_version_info.version
+  client.transition_model_version_stage(
+    name = model_name,
+    version = target_version,
+    stage = target_stage,
+    archive_existing_versions = True
+  )
+print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
 
 # COMMAND ----------
 
@@ -113,7 +139,7 @@ while not version_endpoint_enabled:
     raise ValueError(f"Max attempts reached, last status: {status}")
   if status != "SERVICE_STATE_PENDING":
     print(f"Status: {status}, exiting...")
-    pass
+    break
   time.sleep(10)
 
 # COMMAND ----------

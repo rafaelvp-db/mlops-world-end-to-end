@@ -101,11 +101,13 @@ import pickle
 
 def save_model(
     model,
+    run_id,
     preprocessor_pipeline,
-    artifacts_path = "/artifacts/",
-    preprocessor_artifact_path = "/dbfs/tmp/preprocessor.pkl",
-    model_artifact_path = "/dbfs/tmp/xgb.pkl"
+    artifacts_folder = "artifacts",
+    preprocessor_artifact_path = "/tmp/preprocessor.pkl",
+    model_artifact_path = "/tmp/xgb.pkl"
 ):
+    full_remote_path = f"runs://{run_id}/{artifacts_folder}"
     with open(model_artifact_path, "wb") as model_file:
       pickle.dump(model, model_file)
       
@@ -113,12 +115,12 @@ def save_model(
       pickle.dump(preprocessor_pipeline, preprocessor_file)
   
     artifacts = {
-      "preprocessor": f"{artifacts_path}/{preprocessor_artifact_path}",
-      "model": f"{artifacts_path}/{model_artifact_path}"
+      "preprocessor": preprocessor_artifact_path,
+      "model": model_artifact_path
     }
     
     model_info = mlflow.pyfunc.log_model(
-        artifact_path = artifacts_path,
+        artifact_path = full_remote_path,
         python_model = SklearnModelWrapper(),
         code_path = ["./xgb_wrapper.py"],
         artifacts = artifacts,
@@ -145,7 +147,7 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
   # preprocess features and train
   preprocessor_pipeline = build_preprocessor()
   xgb_model_best = build_model(parsed_params) 
-  preprocessed_features = preprocessor.fit_transform(X_train)
+  preprocessed_features = preprocessor_pipeline.fit_transform(X_train)
   xgb_model_best.fit(preprocessed_features, y_train)
   # predict
   y_prob = xgb_model_best.predict_proba(preprocessed_features)
@@ -159,8 +161,9 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
                     )
   mlflow.log_params(params)
   print('Xgboost Trained with XGBClassifier')
-  save_model(
+  model_info = save_model(
     model = xgb_model_best,
+    run_id = run_id,
     preprocessor_pipeline = preprocessor_pipeline
   )
   model_name = "telco_churn_model"
@@ -175,7 +178,8 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
 
 # COMMAND ----------
 
-model = mlflow.sklearn.load_model(model_uri = model_info.model_uri)
+
+model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri, context)
 
 # COMMAND ----------
 

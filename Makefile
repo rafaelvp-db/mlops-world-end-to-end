@@ -18,3 +18,6 @@ model:
 
 lint:
 	source .venv/bin/activate && black notebooks/model_builder.py && black notebooks/utils.py
+
+flake:
+	source .venv/bin/activate && flake8 notebooks/model_builder.py && flake8 notebooks/utils.py

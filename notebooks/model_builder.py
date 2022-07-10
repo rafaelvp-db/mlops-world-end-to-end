@@ -1,3 +1,4 @@
+from hyperopt import STATUS_OK
 import mlflow
 import numpy as np
 import pandas as pd

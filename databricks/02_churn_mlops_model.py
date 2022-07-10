@@ -1,4 +1,9 @@
 # Databricks notebook source
+dbutils.widgets.text("db_name", "telcochurndb")
+db_name = dbutils.widgets.get("db_name")
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC ## 2. Data Prep
 # MAGIC 
@@ -7,15 +12,8 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("db_name", "telcochurndb")
-db_name = dbutils.widgets.get("db_name")
-
-# COMMAND ----------
-
-from utils import export_df, compute_weights
-
-# COMMAND ----------
-
+from databricks.mlflow_utils import save_model
+from databricks.utils import export_df, compute_weights
 import numpy as np
 
 # reading back the Delta table and calling a data4train -> can be a class then
@@ -96,42 +94,9 @@ print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
 
 # COMMAND ----------
 
-from xgb_wrapper import SklearnModelWrapper
-import pickle
-
-def save_model(
-    model,
-    run_id,
-    preprocessor_pipeline,
-    artifacts_folder = "artifacts",
-    preprocessor_artifact_path = "/tmp/preprocessor.pkl",
-    model_artifact_path = "/tmp/xgb.pkl"
-):
-    full_remote_path = f"runs://{run_id}/{artifacts_folder}"
-    with open(model_artifact_path, "wb") as model_file:
-      pickle.dump(model, model_file)
-      
-    with open(preprocessor_artifact_path, "wb") as preprocessor_file:
-      pickle.dump(preprocessor_pipeline, preprocessor_file)
-  
-    artifacts = {
-      "preprocessor": preprocessor_artifact_path,
-      "model": model_artifact_path
-    }
-    
-    model_info = mlflow.pyfunc.log_model(
-        artifact_path = full_remote_path,
-        python_model = SklearnModelWrapper(),
-        code_path = ["./xgb_wrapper.py"],
-        artifacts = artifacts,
-    )
-        
-    return model_info
-
-# COMMAND ----------
-
 from mlflow.models.signature import infer_signature
 from utils import build_model, build_preprocessor
+from databricks.mlflow_utils import save_model
 from sklearn.metrics import average_precision_score, accuracy_score, log_loss
 from hyperopt import space_eval
 

@@ -29,12 +29,8 @@ from xgboost import XGBClassifier
 from scipy import stats
 
 import mlflow
-from mlflow.tracking import MlflowClient
-from mlflow.exceptions import RestException
-from mlflow.models.signature import ModelSignature
-from mlflow.types.schema import Schema, ColSpec
 
-from hyperopt import hp, fmin, tpe, SparkTrials, STATUS_OK, space_eval
+from hyperopt import STATUS_OK
 
 
 def stratified_split_train_test(df, label, join_on, seed=42, frac = 0.1):

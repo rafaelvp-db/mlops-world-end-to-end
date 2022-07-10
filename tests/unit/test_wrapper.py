@@ -50,6 +50,7 @@ create_table_sql = """
 spark.sql("DROP TABLE IF EXISTS telco_churn")
 spark.sql(create_table_sql)
 
+
 def test_module():
     """Basic sanity checks."""
     

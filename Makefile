@@ -9,4 +9,4 @@ utils:
 	source .venv/bin/activate && pytest ./tests/unit/test_utils.py
 
 wrapper:
-	source .venv/bin/activate && pytest ./tests/unit/test_wrapper.py
+	rm -rf metastore_db && source .venv/bin/activate && pytest ./tests/unit/test_wrapper.py

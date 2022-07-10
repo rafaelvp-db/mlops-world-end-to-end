@@ -1,3 +1,4 @@
+from sklearn.metrics import log_loss, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -64,3 +65,23 @@ def _build_model(params):
     xgb_classifier = XGBClassifier(**params)
 
     return xgb_classifier
+
+
+def train_model(params, X_train, y_train):
+    """ 
+    Function that calls the pipeline to train a model and Tune it with HyperOpt 
+
+    :params dict: all hyperparameters of the model
+    :return dict: return a dictionary that contains a status and the loss of the model 
+    """
+    model = build_pipeline(params)
+    model.fit(X_train, y_train)
+    prob = model.predict_proba(X_train)
+    loss = log_loss(y_train, prob[:, 1])
+    mlflow.log_metrics(
+        {
+            'train.log_loss': loss,
+            'train.accuracy': accuracy_score(y_train, np.round(prob[:, 1]))
+        }
+    )
+    return { 'status': STATUS_OK, 'loss': loss }

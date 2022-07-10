@@ -146,18 +146,16 @@ def train_model(params, X_train, y_train):
     :params dict: all hyperparameters of the model
     :return dict: return a dictionary that contains a status and the loss of the model 
     """
-    preprocessor = build_preprocessor()
-    preprocessed_input = preprocessor.fit_transform(X_train)
-    model = build_model(params)
-    model.fit(preprocessed_input, y_train)
-    loss = log_loss(y_train, model.predict_proba(preprocessed_input))
+    model = build_pipeline(params)
+    model.fit(X_train, y_train)
+    prob = model.predict_proba(X_train)
+    loss = log_loss(y_train, prob)
     mlflow.log_metrics(
         {
             'log_loss': loss,
-            'accuracy': accuracy_score(y_train, model.predict(preprocessed_input))
+            'accuracy': accuracy_score(y_train, prob[:,1])
         }
     )
-
     return { 'status': STATUS_OK, 'loss': loss }
 
 

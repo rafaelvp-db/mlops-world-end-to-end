@@ -13,6 +13,6 @@ def test_module():
     compute_weights = utils.compute_weights
     write_into_delta_table = utils.write_into_delta_table
     train_model = utils.train_model
-    build_model = utils.build_model
+    build_model = utils.build_pipeline
 
     pass

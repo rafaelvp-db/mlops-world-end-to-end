@@ -152,8 +152,8 @@ def train_model(params, X_train, y_train):
     loss = log_loss(y_train, prob[:, 1])
     mlflow.log_metrics(
         {
-            'log_loss': loss,
-            'accuracy': accuracy_score(y_train, np.round(prob[:, 1]))
+            'train.log_loss': loss,
+            'train.accuracy': accuracy_score(y_train, np.round(prob[:, 1]))
         }
     )
     return { 'status': STATUS_OK, 'loss': loss }

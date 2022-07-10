@@ -24,8 +24,8 @@ class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
 
   
   def predict(self, context, model_input):
-    """This is an abstract function. We customized it into a method to fetch the Hugging Face model.
-      Args:
+    """This is an abstract function to run the predictions.
+      Args:mod
           context ([type]): MLflow context where the model artifact is stored.
           model_input ([type]): the input data for inference.
       Returns:

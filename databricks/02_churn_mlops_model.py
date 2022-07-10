@@ -179,7 +179,7 @@ with mlflow.start_run(run_name='XGB Final Model') as run:
 # COMMAND ----------
 
 
-model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri, context)
+model = mlflow.pyfunc.load_model(model_uri = model_info.model_uri)
 
 # COMMAND ----------
 

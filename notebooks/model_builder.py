@@ -1,4 +1,5 @@
-from hyperopt import STATUS_OK
+from typing import Dict
+
 import mlflow
 import numpy as np
 import pandas as pd
@@ -138,21 +139,18 @@ def to_numeric(df):
     return df
 
 
-def train_model(params, X_train, y_train):
+def train_model(params, X_train, y_train) -> Dict:
     """
-    Function that calls the pipeline to train a model and Tune it with HyperOpt
+    Function that calls the pipeline to train a model
 
     :params dict: all hyperparameters of the model
-    :return dict: return a dictionary that contains a status and the loss of the model
+    :return Tuple(pipeline, np.array): returns a dictionary with the trained model and predicted
+        probabilities for the training set
     """
     model = build_pipeline(params)
     model.fit(X_train, y_train)
     prob = model.predict_proba(X_train)
-    loss = log_loss(y_train, prob[:, 1])
-    mlflow.log_metrics(
-        {
-            "train.log_loss": loss,
-            "train.accuracy": accuracy_score(y_train, np.round(prob[:, 1])),
-        }
-    )
-    return {"status": STATUS_OK, "loss": loss}
+    return {
+        "model": model,
+        "prob": prob
+    }

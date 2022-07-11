@@ -139,18 +139,13 @@ def to_numeric(df):
     return df
 
 
-def train_model(params, X_train, y_train) -> Dict:
+def train_model(params, X_train, y_train) -> Pipeline:
     """
     Function that calls the pipeline to train a model
 
     :params dict: all hyperparameters of the model
-    :return Tuple(pipeline, np.array): returns a dictionary with the trained model and predicted
-        probabilities for the training set
+    :return Pipeline: returns trained Pipeline/model
     """
     model = build_pipeline(params)
     model.fit(X_train, y_train)
-    prob = model.predict_proba(X_train)
-    return {
-        "model": model,
-        "prob": prob
-    }
+    return model

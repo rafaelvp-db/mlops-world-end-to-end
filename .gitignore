@@ -32,3 +32,16 @@ htmlcov/*
 
 # local mlflow files
 mlruns/
+
+
+.venv
+*.egg-info
+
+metastore_db
+
+derby.log
+.coveragerc
+__pycache__
+*.pyc
+*/__pycache__
+*/.pytest_cache

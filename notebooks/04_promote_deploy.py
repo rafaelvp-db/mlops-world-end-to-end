@@ -31,10 +31,16 @@ best_run_id
 
 # COMMAND ----------
 
-# DBTITLE 1,Transition to Staging
+# DBTITLE 1,Setting tags to our model
 from mlflow.tracking import MlflowClient
 client = MlflowClient()
 
+client.set_tag(run_id, key='demographic_vars', value='seniorCitizen,gender_Female')
+client.set_tag(run_id, key='db_table', value=f'{db_name}.training')
+
+# COMMAND ----------
+
+# DBTITLE 1,Transition to Staging
 model_version_info = client.get_latest_versions(name = model_name, stages = ["None"])[0]
 target_version = None
 target_stage = "Staging"
@@ -45,6 +51,20 @@ if best_run_id == model_version_info.run_id:
     name = model_name,
     version = target_version,
     stage = target_stage
+  )
+  
+  #Updating model version in Staging 
+  #The main model description, typically done once.
+  client.update_registered_model(
+    name=model_version_info.name,
+    description="This model predicts whether a customer will churn.  It is used to update the Telco Churn Dashboard in DB SQL."
+  )
+
+  #Gives more details on this specific model version
+  client.update_model_version(
+    name=model_version_info.name,
+    version=model_version_info.version,
+    description="This model version was built using XGBoost, with the best hyperparameters set identified with HyperOpt."
   )
   
 print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
@@ -76,6 +96,7 @@ if best_run_id == model_version_info.run_id:
     stage = target_stage,
     archive_existing_versions = True
   )
+  
 print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
 
 # COMMAND ----------

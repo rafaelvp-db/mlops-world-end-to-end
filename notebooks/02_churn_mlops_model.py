@@ -161,7 +161,8 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   model_info = mlflow.sklearn.log_model(
     sk_model = xgb_model_best,
     artifact_path = "model",
-    pip_requirements = ["scikit-learn", "xgboost", "pandas", "numpy"]
+    pip_requirements = ["scikit-learn", "xgboost", "pandas", "numpy"],
+    code_paths = ["model_builder.py"]
   )
   print('Xgboost Trained with XGBClassifier')
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)

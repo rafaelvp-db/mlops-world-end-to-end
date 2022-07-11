@@ -41,9 +41,10 @@ print(f"Our target is imbalanced, computing the scale is {scale}")
 
 # COMMAND ----------
 
-from hyperopt import hp, fmin, tpe, SparkTrials, space_eval
+from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
 import mlflow
-from utils import train_model
+from sklearn.metrics import log_loss, accuracy_score
+from model_builder import train_model
 
 # define hyperopt search space
 search_space = {
@@ -59,7 +60,14 @@ search_space = {
 }
 
 def train_wrapper(params):
-  return train_model(params, X_train, y_train)
+  model, prob = train_model(params, X_train, y_train)
+  mlflow.log_metrics(
+      {
+          "train.log_loss": log_loss(y_train, prob[:, 1]),
+          "train.accuracy": accuracy_score(y_train, np.round(prob[:, 1])),
+      }
+  )
+  return {"status": STATUS_OK, "loss": loss}
 
 experiment_path = f"/Shared/{experiment_name}"
 experiment = mlflow.get_experiment_by_name(experiment_path)
@@ -102,7 +110,7 @@ print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
 # COMMAND ----------
 
 from mlflow.models.signature import infer_signature
-from utils import build_pipeline
+from model_builder import build_pipeline
 from sklearn.metrics import average_precision_score, accuracy_score, log_loss
 from hyperopt import space_eval
 
@@ -151,7 +159,7 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   model_info = mlflow.sklearn.log_model(
     sk_model = xgb_model_best,
     artifact_path = "model",
-    pip_requirements = ["scikit-learn", "xgboost"]
+    pip_requirements = ["scikit-learn", "xgboost", "pandas", "numpy", "hyperopt"]
   )
   print('Xgboost Trained with XGBClassifier')
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)

@@ -13,6 +13,9 @@ utils:
 builder:
 	source .venv/bin/activate && pytest ./tests/unit/test_builder.py
 
+endpoint:
+	source .venv/bin/activate && pytest ./tests/integration/test_endpoint.py
+
 model:
 	make utils && make builder
 

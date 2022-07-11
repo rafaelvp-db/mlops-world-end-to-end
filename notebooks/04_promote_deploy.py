@@ -1,4 +1,9 @@
 # Databricks notebook source
+!pip install scikit-learn==1.1.1
+!pip install xgboost==1.5.0
+
+# COMMAND ----------
+
 dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("run_name", "XGB Final Model")
 dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
@@ -138,7 +143,7 @@ while not version_endpoint_enabled:
   if attempt_number >= max_attempts:
     raise ValueError(f"Max attempts reached, last status: {status}")
   if status != "SERVICE_STATE_PENDING":
-    print(f"Status: {status}, exiting...")
+    print(f"*** Status: {status}, exiting... ***")
     break
   time.sleep(10)
 

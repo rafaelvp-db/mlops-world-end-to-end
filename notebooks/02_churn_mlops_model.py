@@ -1,4 +1,9 @@
 # Databricks notebook source
+!pip install scikit-learn==1.1.1
+!pip install xgboost==1.5.0
+
+# COMMAND ----------
+
 dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("run_name", "XGB Final Model")
 dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
@@ -161,7 +166,7 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   model_info = mlflow.sklearn.log_model(
     sk_model = xgb_model_best,
     artifact_path = "model",
-    pip_requirements = ["scikit-learn", "xgboost", "pandas", "numpy"],
+    pip_requirements = ["-r requirements.txt"],
     code_paths = ["model_builder.py"]
   )
   print('Xgboost Trained with XGBClassifier')

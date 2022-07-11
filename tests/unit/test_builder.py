@@ -1,4 +1,4 @@
-"""Unit tests for our Pyfunc XGB Wrapper"""
+"""Unit tests for our Model Builder module"""
 
 
 def test_module():

@@ -1,0 +1,17 @@
+{
+    "dev": {
+      "jobs": [
+        {
+          "name": "data-prep",
+          "new_cluster": {
+            "spark_version": "10.5.x-cpu-ml-scala2.12",
+            "num_workers": 2,
+            "node_type_id": "i3.xlarge"
+          },
+          "spark_python_task": {
+            "python_file": "telco_churn_mlops/jobs/data/entrypoint.py"
+          }
+        }
+      ]
+    }
+}

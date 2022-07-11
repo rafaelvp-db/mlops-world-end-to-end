@@ -1,15 +1,22 @@
 from telco_churn_mlops.common import Job
-from telco_churn_mlops.jobs.prepare_data import write_delta_tables
+from telco_churn_mlops.jobs.trainer import Trainer
 
 
-class PrepareDataJob(Job):
+class TrainModelJob(Job):
 
     def launch(self):
-        self.logger.info("Launching sample job")
-        write_delta_tables(spark = self.spark)
-        self.logger.info("Sample job finished!")
+        self.logger.info("Launching model training job")
+        
+        trainer = Trainer(
+            db_name = self.init_config["db_name"],
+            training_table = self.init_config["training_table"],
+            testing_table = self.init_config["testing_table"]
+        )
+        trainer.train()
+
+        self.logger.info("training job finished!")
 
 
 if __name__ == "__main__":
-    job = PrepareDataJob()
+    job = TrainModelJob()
     job.launch()

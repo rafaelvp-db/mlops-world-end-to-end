@@ -60,14 +60,16 @@ search_space = {
 }
 
 def train_wrapper(params):
-  model, prob = train_model(params, X_train, y_train)
+  model = train_model(params, X_train, y_train)
+  prob = model.predict_proba(X_train)
+  loss = log_loss(y_train, prob[:, 1])
   mlflow.log_metrics(
       {
-          "train.log_loss": log_loss(y_train, prob[:, 1]),
+          "train.log_loss": loss,
           "train.accuracy": accuracy_score(y_train, np.round(prob[:, 1])),
       }
   )
-  return {"status": STATUS_OK, "loss": loss}
+  return loss
 
 experiment_path = f"/Shared/{experiment_name}"
 experiment = mlflow.get_experiment_by_name(experiment_path)
@@ -159,7 +161,7 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   model_info = mlflow.sklearn.log_model(
     sk_model = xgb_model_best,
     artifact_path = "model",
-    pip_requirements = ["scikit-learn", "xgboost", "pandas", "numpy", "hyperopt"]
+    pip_requirements = ["scikit-learn", "xgboost", "pandas", "numpy"]
   )
   print('Xgboost Trained with XGBClassifier')
   version_info = mlflow.register_model(model_uri = model_info.model_uri, name = model_name)

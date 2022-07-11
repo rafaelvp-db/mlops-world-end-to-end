@@ -1,6 +1,6 @@
 """
     Module containing auxiliary functions for data preparation and model training.
-    Author: Anastasia Prokaieva
+    Authors: Anastasia Prokaieva & Rafael V. Pierre
 """
 
 

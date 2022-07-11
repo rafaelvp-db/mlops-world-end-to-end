@@ -1,12 +1,10 @@
-from pyspark.context import SparkContext
-from utils import stratified_split_train_test, write_into_delta_table
-
-spark = SparkContext.getOrCreate()
+from telco_churn_mlops.jobs.utils import stratified_split_train_test, write_into_delta_table
 
 
 def write_delta_tables(
-    db_name: str,
-    input_data_path: str,
+    spark,
+    db_name: str = "telcochurndb",
+    input_data_path: str = "/tmp/churn.csv",
     label: str = "Churn",
     join_on: str = "customerID"
 ):

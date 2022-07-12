@@ -1,13 +1,13 @@
 setuptools
 wheel
-pyspark==3.1.2
+pyspark==3.2.1
 pyyaml
 pytest
 pytest-cov
 dbx
-delta-spark
-sklearn
+delta-spark==1.2.1
+scikit-learn==1.1.1
 mlflow
-xgboost
+xgboost==1.5.0
 hyperopt
 pyarrow

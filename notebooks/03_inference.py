@@ -158,26 +158,4 @@ X_prediction = wrappedModel.predict()
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC ### TO DO
-# MAGIC 
-# MAGIC Need to add Spark COntext inside the Class and it should be ok 
-
-# COMMAND ----------
-
-mlflow.pyfunc.log_model(artifact_path='churn_model',python_model=wrappedModel,
-                                registered_model_name='churn_mlops_ap')
-mlflow.end_run()
-
-# COMMAND ----------
-
-import mlflow.pyfunc
- 
-model_version_uri = "models:/{model_name}/{model_version}".format(model_name="xbg_pipeline", model_version='2')
- 
-print("Loading registered model version from URI: '{model_uri}'".format(model_uri=model_version_uri))
-latest_model_version = mlflow.pyfunc.load_model(model_version_uri)
-
-# COMMAND ----------
-
 

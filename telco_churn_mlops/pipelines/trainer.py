@@ -4,12 +4,12 @@ from mlflow.models.signature import infer_signature
 import numpy as np
 from sklearn.metrics import log_loss, accuracy_score, average_precision_score
 
-from model_builder import train_model, build_pipeline
+from telco_churn_mlops.pipelines.model_builder import train_model, build_pipeline
 from typing import List
-from utils import export_df, compute_weights
+from telco_churn_mlops.jobs.utils import export_df, compute_weights
 
 
-class Trainer():
+class ModelTrainingPipeline():
 
     def __init__(
         self,
@@ -17,6 +17,7 @@ class Trainer():
         training_table: str = "training",
         testing_table: str = "testing",
         experiment_name: str = "telco_churn_xgb",
+        model_name: str = "xgboost",
         pip_requirements: List[str] = [
             "scikit-learn==1.1.1",
             "xgboost==1.5.0",
@@ -29,12 +30,14 @@ class Trainer():
         self._testing_table = testing_table
         self._experiment_name = experiment_name
         self._pip_requirements = pip_requirements
+        self._model_name = model_name
+        self._get_splits()
         self._initialize_search_space()
 
     def _calculate_scale(self, decimal_places = 3):
         self.scale = np.round(compute_weights(self.y_train), decimal_places)
 
-    def _get_splits(self, decimal_places: int = 3):
+    def _get_splits(self):
         self.X_train, self.y_train = export_df(f"{self._db_name}.{self._training_table}")
         self.X_test, self.y_test = export_df(f"{self._db_name}.{self._testing_table}")
 
@@ -52,6 +55,7 @@ class Trainer():
 
     def _initialize_search_space(self):
 
+        self._calculate_scale()
         self._search_space = {
             'max_depth' : hp.quniform('max_depth', 5, 30, 1)
             ,'learning_rate' : hp.loguniform('learning_rate', np.log(0.01), np.log(0.10))
@@ -63,26 +67,18 @@ class Trainer():
             ,'colsample_bynode' : hp.loguniform('colsample_bynode', np.log(0.1), np.log(1.0))
             ,'scale_pos_weight' : hp.loguniform('scale_pos_weight', np.log(1), np.log(self.scale * 10))
         }
-
-    def _initialize_experiment(self):
-        experiment_path = f"/Shared/{self._experiment_name}"
-        experiment = mlflow.get_experiment_by_name(experiment_path)
-        if not experiment:
-            experiment = mlflow.create_experiment(name = experiment_path)
-        self._experiment = experiment
+        
 
     def _get_best_params(
         self,
-        search_space = None,
         parallelism = 5,
         max_evals = 10
     ):
 
         best_params = None
-        if search_space is not None:
-            self._search_space = search_space
 
-        with mlflow.start_run(experiment_id = self._experiment.experiment_id) as run:
+        mlflow.set_experiment(f"/Shared/{self._experiment_name}")
+        with mlflow.start_run() as run:
             best_params = fmin(
                 fn = self._train_wrapper,
                 space = self._search_space,
@@ -117,6 +113,16 @@ class Trainer():
             metric_results[f"{stage}.{key}"] = metric_value
         
         return metric_results
+
+
+    def _register_model(self, model_name):
+
+        version_info = mlflow.register_model(
+            model_uri = self.model_info.model_uri,
+            name = model_name
+        )
+
+        return version_info
 
 
     def train(self, run_name = "XGB Final"):
@@ -161,16 +167,8 @@ class Trainer():
             )
 
             self.model_info = model_info
+            self._register_model(self._model_name)
 
-
-    def register_model(self, model_name):
-
-        version_info = mlflow.register_model(
-            model_uri = self.model_info.model_uri,
-            name = model_name
-        )
-
-        return version_info
 
 
 

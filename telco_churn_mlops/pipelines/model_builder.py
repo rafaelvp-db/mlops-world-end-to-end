@@ -11,6 +11,36 @@ from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardSc
 
 from xgboost import XGBClassifier
 
+bool_features = [
+    "Dependents",
+    "PaperlessBilling",
+    "Partner",
+    "PhoneService",
+    "SeniorCitizen",
+]
+
+numeric_features = [
+    "AvgPriceIncrease",
+    "Contract",
+    "MonthlyCharges",
+    "NumOptionalServices",
+    "TotalCharges",
+    "tenure",
+]
+
+categorical_features = [
+    "DeviceProtection",
+    "InternetService",
+    "MultipleLines",
+    "OnlineBackup",
+    "OnlineSecurity",
+    "PaymentMethod",
+    "StreamingMovies",
+    "StreamingTV",
+    "TechSupport",
+    "gender",
+],
+
 
 def build_pipeline(params) -> Pipeline:
     """
@@ -23,7 +53,7 @@ def build_pipeline(params) -> Pipeline:
 
     bool_pipeline = Pipeline(
         steps=[
-            ("cast_type", FunctionTransformer(to_object)),
+            ("cast_type", FunctionTransformer(_to_object)),
             ("imputer", SimpleImputer(missing_values=None, strategy="most_frequent")),
             ("onehot", OneHotEncoder(handle_unknown="ignore")),
         ]
@@ -33,19 +63,13 @@ def build_pipeline(params) -> Pipeline:
         (
             "boolean",
             bool_pipeline,
-            [
-                "Dependents",
-                "PaperlessBilling",
-                "Partner",
-                "PhoneService",
-                "SeniorCitizen",
-            ],
+            bool_features
         )
     )
 
     numerical_pipeline = Pipeline(
         steps=[
-            ("converter", FunctionTransformer(to_numeric)),
+            ("converter", FunctionTransformer(_to_numeric)),
             ("imputer", SimpleImputer(strategy="mean")),
         ]
     )
@@ -54,14 +78,7 @@ def build_pipeline(params) -> Pipeline:
         (
             "numerical",
             numerical_pipeline,
-            [
-                "AvgPriceIncrease",
-                "Contract",
-                "MonthlyCharges",
-                "NumOptionalServices",
-                "TotalCharges",
-                "tenure",
-            ],
+            numeric_features
         )
     )
 
@@ -78,18 +95,7 @@ def build_pipeline(params) -> Pipeline:
         (
             "onehot",
             one_hot_pipeline,
-            [
-                "DeviceProtection",
-                "InternetService",
-                "MultipleLines",
-                "OnlineBackup",
-                "OnlineSecurity",
-                "PaymentMethod",
-                "StreamingMovies",
-                "StreamingTV",
-                "TechSupport",
-                "gender",
-            ],
+            categorical_features
         )
     )
 
@@ -127,13 +133,13 @@ def _build_model(params):
     return xgb_classifier
 
 
-def to_object(df):
+def _to_object(df):
 
     df = df.astype(object)
     return df
 
 
-def to_numeric(df):
+def _to_numeric(df):
 
     df = df.apply(pd.to_numeric, errors="coerce")
     return df

@@ -1,13 +1,10 @@
 """Unit tests for our Model Builder module"""
 
+from telco_churn_mlops.pipelines import model_builder
 
 def test_module():
     """Basic sanity checks."""
 
-    from notebooks.model_builder import (
-        build_pipeline,
-        _build_model,
-        train_model
-    )
+    pipeline_builder = model_builder.build_pipeline
 
     pass

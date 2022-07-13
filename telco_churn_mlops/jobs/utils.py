@@ -13,6 +13,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from sklearn.utils.class_weight import compute_class_weight
+from delta.tables import DeltaTable
 
 
 def stratified_split_train_test(df, label, join_on, seed=42, frac=0.1):
@@ -162,16 +163,25 @@ def compute_weights(y_train):
 
 
 def write_into_delta_table(
-    df, path, schema_option="overwriteSchema", mode="overwrite", table_type="managed"
+    df,
+    table_name,
+    db_name = "telcochurndb",
+    schema_option="overwriteSchema",
+    mode="overwrite",
+    table_type="managed"
 ):
     if table_type == "managed":
-        df.write.format("delta").mode(mode).option(schema_option, "true").saveAsTable(
-            path
-        )
-    else:
+
+        table = f"{db_name}.{table_name}"
+        spark = SparkSession.builder.getOrCreate()
+        spark.sql(f"CREATE DATABASE IF NOT EXISTS {db_name}")
+        spark.sql(f"DROP TABLE IF EXISTS {db_name}.{table_name}")
+        df.write.saveAsTable(f"{db_name}.{table_name}")
+
+    #else:
         # you need to provide the full path
         # example : /mnt/project/delta_
-        df.write.format("delta").mode(mode).option(schema_option, "true").save(path)
+        #df.write.format("delta").mode(mode).option(schema_option, "true").save(path)
 
 
 def to_object(df):

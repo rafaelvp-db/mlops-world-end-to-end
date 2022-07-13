@@ -15,7 +15,6 @@ class ABTestPipeline:
         db_name,
         prod_version,
         test_version,
-        experiment_name,
         limit=None,
     ):
         self.spark = spark

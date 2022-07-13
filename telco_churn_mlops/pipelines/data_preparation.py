@@ -14,7 +14,7 @@ class DataPreparationPipeline:
         self.spark = spark
         self.db_name = db_name
 
-    def write_delta_tables(
+    def run(
         self,
         input_data_path: str = "/tmp/ibm_telco_churn.csv",
         label: str = "Churn",
@@ -28,13 +28,9 @@ class DataPreparationPipeline:
             join_on = join_on,
         )
 
-        write_into_delta_table(
-            df = df_train,
-            db_name = self.db_name,
-            table_name = "training"
-        )
-        write_into_delta_table(
-            df = df_test,
-            db_name = self.db_name,
-            table_name = "testing"
-        )
+        for item in [(df_train, "training"), (df_test, "testing")]:
+            write_into_delta_table(
+                df = item[0],
+                db_name = self.db_name,
+                table_name = item[1]
+            )

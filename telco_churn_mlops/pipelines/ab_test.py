@@ -1,65 +1,50 @@
 import mlflow
-import mlflow.sklearn
+from sklearn.metrics import log_loss
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import lit, col
 
-from lendingclub_scoring.data.DataProvider import LendingClubDataProvider
+from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
+from telco_churn_mlops.jobs.utils import export_df
 
-FEATURES = [
-    "term",
-    "home_ownership",
-    "purpose",
-    "addr_state",
-    "verification_status",
-    "application_type",
-    "loan_amnt",
-    "emp_length",
-    "annual_inc",
-    "dti",
-    "delinq_2yrs",
-    "revol_util",
-    "total_acc",
-    "credit_length_in_years",
-    "int_rate",
-    "net",
-    "issue_year",
-]
-
-
-class LendingClubABTestPipeline:
+class ABTestPipeline:
     def __init__(
         self,
         spark,
-        input_path,
-        output_path,
         model_name,
+        db_name,
         prod_version,
         test_version,
-        limit=None,
+        experiment_name,
+        limit=None
     ):
         self.spark = spark
-        self.input_path = input_path
-        self.output_path = output_path
         self.model_name = model_name
-        self.limit = limit
+        self.db_name = db_name
         self.prod_version = prod_version
         self.test_version = test_version
-        self.data_provider = LendingClubDataProvider(spark, input_path, limit)
+        self.limit = limit
 
     def run(self):
-        df = self.data_provider.load_and_transform_data_consumer()
-        a_df, b_df = df.randomSplit([0.8, 0.2])
+        test_df = export_df(table_name = "testing")
+        versions = [
+            {
+                "name": "prod",
+                "number": self.prod_version
+            },
+            {
+                "name": "test",
+                "number": self.test_version
+            }
+        ]
 
-        res_df = self.score_model(a_df, self.prod_version).union(
-            self.score_model(b_df, self.test_version)
-        )
+        for version in versions:
+            with mlflow.start_run(run_name = f"{version['name']}_model") as run:
+                mlflow.set_tags(version)
+                metric = self._score_model(df = test_df, version = version["number"])
+                mlflow.log_metric(metric)
 
-        res_df.write.format("delta").mode("overwrite").save(self.output_path)
-
-    def score_model(self, df: DataFrame, version: str) -> DataFrame:
+    def _score_model(self, df: DataFrame, version: str) -> DataFrame:
         model_uri = f"models:/{self.model_name}/{version}"
-        udf = mlflow.pyfunc.spark_udf(self.spark, model_uri)
-        df = df.withColumn("prediction", udf(*[col(c) for c in FEATURES])).withColumn(
-            "model_version", lit(version)
-        )
-        return df
+        model = mlflow.sklearn.load_model(model_uri = model_uri)
+        pred = model.predict_proba(df.drop("Churn", axis=1))
+        return {"loss": pred}

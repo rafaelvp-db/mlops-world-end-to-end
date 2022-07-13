@@ -1,0 +1,43 @@
+{
+    "default": {
+      "jobs": [
+        {
+          "name": "ab_test",
+          "job_clusters": [
+            {
+              "job_cluster_key": "telcochurn_cluster",
+              "new_cluster": {
+                "spark_version": "11.0.x-cpu-ml-scala2.12",
+                "num_workers": 5,
+                "node_type_id": "i3.xlarge",
+                "aws_attributes": {
+                  "availability": "ON_DEMAND"
+                }
+              }
+            }
+          ],
+          "tasks": [
+            {
+              "task_key": "ab_test",
+              "job_cluster_key": "telcochurn_cluster",
+              "spark_python_task": {
+                "name": "ab_test",
+                "python_file": "telco_churn_mlops/jobs/ab_test/entrypoint.py",
+                "parameters": [
+                  "--conf-file",
+                  "conf/ab_test/ab_test_config.json"
+                ],
+                "libraries": [
+                  {
+                    "pypi": {
+                      "package": "-r telco_churn_mlops/pipelines/requirements.txt"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }

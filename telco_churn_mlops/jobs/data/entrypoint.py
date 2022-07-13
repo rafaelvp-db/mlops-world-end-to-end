@@ -11,7 +11,7 @@ class PrepareDataJob(Job):
             spark = self.spark,
             db_name = db_name
         )
-        pipeline.write_delta_tables()
+        pipeline.run()
         self.logger.info("Data prep job finished!")
 
 

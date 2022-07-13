@@ -91,49 +91,7 @@ class ModelTrainingPipeline():
 
         self._best_params = best_params
 
-    def get_best_run(
-        self,
-        filter_string: str = "status = 'FINISHED'",
-        sort_by: str = "metrics.train.log_loss"
-    ):
-
-        df = mlflow.search_runs(filter_string = filter_string)
-        best_run_id = df.sort_values(by = sort_by, ascending = True)["run_id"].values[0]
-        best_run = mlflow.get_run(run_id = best_run_id)
-
-        return best_run
-
-
-    def _calculate_metrics(
-        self,
-        target_metrics: dict,
-        predicted,
-        labels,
-        stage = "train"
-    ):
-    
-        metric_results = {}
-        for key in target_metrics.keys():
-            if "accuracy" in key:
-                metric_value = target_metrics[key](labels, np.round(predicted[:,1]))
-            else:
-                metric_value = target_metrics[key](labels, predicted[:,1])
-            metric_results[f"{stage}.{key}"] = metric_value
-        
-        return metric_results
-
-
-    def _register_model(self, model_name):
-
-        version_info = mlflow.register_model(
-            model_uri = self.model_info.model_uri,
-            name = model_name
-        )
-
-        return version_info
-
-
-    def train(self, run_name = "XGB Final"):
+    def run(self, run_name = "XGB Final"):
 
         self._get_splits()
         self._initialize_search_space()
@@ -177,6 +135,47 @@ class ModelTrainingPipeline():
 
             self.model_info = model_info
             self._register_model(self._model_name)
+
+    def get_best_run(
+        self,
+        filter_string: str = "status = 'FINISHED'",
+        sort_by: str = "metrics.train.log_loss"
+    ):
+
+        df = mlflow.search_runs(filter_string = filter_string)
+        best_run_id = df.sort_values(by = sort_by, ascending = True)["run_id"].values[0]
+        best_run = mlflow.get_run(run_id = best_run_id)
+
+        return best_run
+
+
+    def _calculate_metrics(
+        self,
+        target_metrics: dict,
+        predicted,
+        labels,
+        stage = "train"
+    ):
+    
+        metric_results = {}
+        for key in target_metrics.keys():
+            if "accuracy" in key:
+                metric_value = target_metrics[key](labels, np.round(predicted[:,1]))
+            else:
+                metric_value = target_metrics[key](labels, predicted[:,1])
+            metric_results[f"{stage}.{key}"] = metric_value
+        
+        return metric_results
+
+
+    def _register_model(self, model_name):
+
+        version_info = mlflow.register_model(
+            model_uri = self.model_info.model_uri,
+            name = model_name
+        )
+
+        return version_info
 
 
 

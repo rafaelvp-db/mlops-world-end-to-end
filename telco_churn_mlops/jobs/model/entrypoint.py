@@ -7,14 +7,14 @@ class TrainModelJob(Job):
     def launch(self):
         self.logger.info("Launching model training job")
 
-        trainer = ModelTrainingPipeline(
+        pipeline = ModelTrainingPipeline(
             db_name=self.conf["db_name"],
             training_table=self.conf["training_table"],
             testing_table=self.conf["testing_table"],
             model_name=self.conf["model_name"],
         )
         mlflow.set_experiment(f"/Shared/{self.conf['experiment_name']}")
-        trainer.run()
+        pipeline.run()
 
         self.logger.info("training job finished!")
 

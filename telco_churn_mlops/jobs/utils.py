@@ -165,10 +165,10 @@ def compute_weights(y_train):
 def write_into_delta_table(
     df,
     table_name,
-    db_name = "telcochurndb",
+    db_name="telcochurndb",
     schema_option="overwriteSchema",
     mode="overwrite",
-    table_type="managed"
+    table_type="managed",
 ):
     if table_type == "managed":
 
@@ -178,10 +178,10 @@ def write_into_delta_table(
         spark.sql(f"DROP TABLE IF EXISTS {db_name}.{table_name}")
         df.write.saveAsTable(f"{db_name}.{table_name}")
 
-    #else:
-        # you need to provide the full path
-        # example : /mnt/project/delta_
-        #df.write.format("delta").mode(mode).option(schema_option, "true").save(path)
+    # else:
+    # you need to provide the full path
+    # example : /mnt/project/delta_
+    # df.write.format("delta").mode(mode).option(schema_option, "true").save(path)
 
 
 def to_object(df):

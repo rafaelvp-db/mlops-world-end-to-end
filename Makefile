@@ -1,4 +1,4 @@
-phony: utils wrapper mlflow deploy-data-prep deploy-build-model
+phony: utils wrapper mlflow deploy-data-prep deploy-build-model deploy-db
 
 env:
 	python -m venv .venv && \
@@ -23,22 +23,25 @@ model:
 	make utils && make builder
 
 lint:
-	source .venv/bin/activate && black notebooks/model_builder.py && black notebooks/utils.py
+	black telco_churn_mlops/jobs/ && black telco_churn_mlops/pipelines
 
 flake:
-	source .venv/bin/activate && flake8 notebooks/model_builder.py && flake8 notebooks/utils.py
+	flake8 telco_churn_mlops/jobs/ && flake8 telco_churn_mlops/pipelines/
 
 unit:
 	source .venv/bin/activate && pip install -e . && pytest tests/unit
 
 deploy-prep:
-	source .venv/bin/activate && dbx deploy --deployment-file=conf/data_prep/deployment.json
+	dbx deploy --deployment-file=conf/data_prep/deployment.json
 
 deploy-builder:
-	source .venv/bin/activate && dbx deploy --deployment-file=conf/build_model/deployment.json
+	dbx deploy --deployment-file=conf/build_model/deployment.json
+
+launch-data:
+	dbx launch --job data_prep --trace
 
 launch-builder:
-	source .venv/bin/activate && dbx launch --job build_model --trace
+	dbx launch --job build_model --trace
 
 deploy:
-	make deploy-data-prep && make deploy-build-model
+	make deploy-data-prep && make deploy-build-model && make deploy-ab

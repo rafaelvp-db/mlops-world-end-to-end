@@ -42,7 +42,7 @@ categorical_features = [
 ]
 
 
-def build_pipeline(params = None) -> Pipeline:
+def build_pipeline(params=None) -> Pipeline:
     """
     Builds pipeline.
     :params dict: all hyperparameters of the model
@@ -59,13 +59,7 @@ def build_pipeline(params = None) -> Pipeline:
         ]
     )
 
-    transformers.append(
-        (
-            "boolean",
-            bool_pipeline,
-            bool_features
-        )
-    )
+    transformers.append(("boolean", bool_pipeline, bool_features))
 
     numerical_pipeline = Pipeline(
         steps=[
@@ -74,13 +68,7 @@ def build_pipeline(params = None) -> Pipeline:
         ]
     )
 
-    transformers.append(
-        (
-            "numerical",
-            numerical_pipeline,
-            numeric_features
-        )
-    )
+    transformers.append(("numerical", numerical_pipeline, numeric_features))
 
     one_hot_pipeline = Pipeline(
         steps=[
@@ -91,13 +79,7 @@ def build_pipeline(params = None) -> Pipeline:
             ("onehot", OneHotEncoder(handle_unknown="ignore")),
         ]
     )
-    transformers.append(
-        (
-            "onehot",
-            one_hot_pipeline,
-            categorical_features
-        )
-    )
+    transformers.append(("onehot", one_hot_pipeline, categorical_features))
 
     model = _build_model(params)
 
@@ -115,7 +97,7 @@ def build_pipeline(params = None) -> Pipeline:
     )
 
 
-def _build_model(params = None):
+def _build_model(params=None):
 
     xgb_classifier = XGBClassifier()
     if params:
@@ -131,7 +113,7 @@ def _build_model(params = None):
 
         # all other hyperparameters are taken as given by hyperopt
         xgb_classifier = XGBClassifier(**params)
-    
+
     return xgb_classifier
 
 

@@ -2,7 +2,7 @@
     "default": {
       "jobs": [
         {
-          "name": "retrain",
+          "name": "prepare_data",
           "job_clusters": [
             {
               "job_cluster_key": "telcochurn_cluster",
@@ -25,31 +25,7 @@
                 "python_file": "telco_churn_mlops/jobs/data/entrypoint.py",
                 "parameters": [
                   "--conf-file",
-                  "conf/data_prep_config.json"
-                ]
-              }
-            },
-            {
-              "task_key": "build_model",
-              "depends_on": [
-                {
-                  "task_key": "prepare_data"
-                }
-              ],
-              "job_cluster_key": "telcochurn_cluster",
-              "spark_python_task": {
-                "name": "build_model",
-                "python_file": "telco_churn_mlops/jobs/model/entrypoint.py",
-                "parameters": [
-                  "--conf-file",
-                  "conf/build_model_config.json"
-                ],
-                "libraries": [
-                  {
-                    "pypi": {
-                      "package": "-r telco_churn_mlops/pipelines/requirements.txt"
-                    }
-                  }
+                  "conf/data_prep/data_prep_config.json"
                 ]
               }
             }

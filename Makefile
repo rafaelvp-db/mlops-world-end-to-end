@@ -1,4 +1,4 @@
-phony: utils wrapper mlflow
+phony: utils wrapper mlflow deploy-data-prep deploy-build-model
 
 env:
 	python -m venv .venv && \
@@ -31,5 +31,14 @@ flake:
 unit:
 	source .venv/bin/activate && pip install -e . && pytest tests/unit
 
+deploy-prep:
+	source .venv/bin/activate && dbx deploy --deployment-file=conf/data_prep/deployment.json
+
+deploy-builder:
+	source .venv/bin/activate && dbx deploy --deployment-file=conf/build_model/deployment.json
+
+launch-builder:
+	source .venv/bin/activate && dbx launch --job build_model --trace
+
 deploy:
-	source .venv/bin/activate && dbx deploy
+	make deploy-data-prep && make deploy-build-model

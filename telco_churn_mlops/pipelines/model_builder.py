@@ -39,10 +39,10 @@ categorical_features = [
     "StreamingTV",
     "TechSupport",
     "gender",
-],
+]
 
 
-def build_pipeline(params) -> Pipeline:
+def build_pipeline(params = None) -> Pipeline:
     """
     Builds pipeline.
     :params dict: all hyperparameters of the model
@@ -115,21 +115,23 @@ def build_pipeline(params) -> Pipeline:
     )
 
 
-def _build_model(params):
+def _build_model(params = None):
 
-    if "max_depth" in params:
-        # hyperopt supplies values as float but must be int
-        params["max_depth"] = int(params["max_depth"])
-    if "min_child_weight" in params:
-        # hyperopt supplies values as float but must be int
-        params["min_child_weight"] = int(params["min_child_weight"])
-    if "max_delta_step" in params:
-        # hyperopt supplies values as float but must be int
-        params["max_delta_step"] = int(params["max_delta_step"])
+    xgb_classifier = XGBClassifier()
+    if params:
+        if "max_depth" in params:
+            # hyperopt supplies values as float but must be int
+            params["max_depth"] = int(params["max_depth"])
+        if "min_child_weight" in params:
+            # hyperopt supplies values as float but must be int
+            params["min_child_weight"] = int(params["min_child_weight"])
+        if "max_delta_step" in params:
+            # hyperopt supplies values as float but must be int
+            params["max_delta_step"] = int(params["max_delta_step"])
 
-    # all other hyperparameters are taken as given by hyperopt
-    xgb_classifier = XGBClassifier(**params)
-
+        # all other hyperparameters are taken as given by hyperopt
+        xgb_classifier = XGBClassifier(**params)
+    
     return xgb_classifier
 
 

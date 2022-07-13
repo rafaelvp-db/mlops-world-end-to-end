@@ -1,9 +1,11 @@
 from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
+import inspect
 import mlflow
 from mlflow.models.signature import infer_signature
 import numpy as np
 from sklearn.metrics import log_loss, accuracy_score, average_precision_score
 
+from telco_churn_mlops.pipelines import model_builder
 from telco_churn_mlops.pipelines.model_builder import train_model, build_pipeline
 from typing import List
 from telco_churn_mlops.jobs.utils import export_df, compute_weights
@@ -31,8 +33,7 @@ class ModelTrainingPipeline():
         self._experiment_name = experiment_name
         self._pip_requirements = pip_requirements
         self._model_name = model_name
-        self._get_splits()
-        self._initialize_search_space()
+        self._model_builder_path = inspect.getfile(model_builder)
 
     def _calculate_scale(self, decimal_places = 3):
         self.scale = np.round(compute_weights(self.y_train), decimal_places)
@@ -43,6 +44,7 @@ class ModelTrainingPipeline():
 
     def _train_wrapper(self, params):
         model = train_model(params, self.X_train, self.y_train)
+        print(f"model: {model}")
         prob = model.predict_proba(self.X_train)
         loss = log_loss(self.y_train, prob[:, 1])
         mlflow.log_metrics(
@@ -102,7 +104,13 @@ class ModelTrainingPipeline():
         return best_run
 
 
-    def _calculate_metrics(target_metrics: dict, predicted, labels, stage = "train"):
+    def _calculate_metrics(
+        self,
+        target_metrics: dict,
+        predicted,
+        labels,
+        stage = "train"
+    ):
     
         metric_results = {}
         for key in target_metrics.keys():
@@ -127,12 +135,13 @@ class ModelTrainingPipeline():
 
     def train(self, run_name = "XGB Final"):
 
+        self._get_splits()
+        self._initialize_search_space()
         self._get_best_params()
         # configure params
         params = space_eval(self._search_space, self._best_params)
         # train model with optimal settings
         with mlflow.start_run(
-            experiment_id = self._experiment.experiment_id,
             run_name = run_name
         ) as run:
         
@@ -163,7 +172,7 @@ class ModelTrainingPipeline():
                 sk_model = xgb_model_best,
                 artifact_path = "model",
                 pip_requirements = self._pip_requirements,
-                code_paths = ["model_builder.py"]
+                code_paths = [self._model_builder_path]
             )
 
             self.model_info = model_info

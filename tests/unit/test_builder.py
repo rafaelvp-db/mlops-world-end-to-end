@@ -1,12 +1,13 @@
 """Unit tests for our Model Builder module"""
 
-from telco_churn_mlops.pipelines import model_builder
+from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from telco_churn_mlops.pipelines.trainer import ModelTrainingPipeline
 
 def test_module():
     """Basic sanity checks."""
 
-    build_pipeline = model_builder.build_pipeline
+    builder = ModelBuilder()
+    build_pipeline = builder.build_pipeline
 
     pass
 
@@ -15,7 +16,8 @@ def test_build_model(caplog):
     """Test model build."""
 
     result = True
-    model = model_builder.build_pipeline()
+    builder = ModelBuilder()
+    model = builder.build_pipeline()
     expected_steps = [
         "preprocessor",
         "standardizer",

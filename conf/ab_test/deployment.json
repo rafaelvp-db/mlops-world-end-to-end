@@ -4,22 +4,19 @@
         {
           "name": "ab_test",
           "new_cluster": {
-              "job_cluster_key": "telcochurn_cluster",
-              "new_cluster": {
-                "spark_version": "11.0.x-cpu-ml-scala2.12",
-                "num_workers": 5,
-                "node_type_id": "i3.xlarge",
-                "aws_attributes": {
-                  "availability": "ON_DEMAND"
-                }
-              }
+              "spark_version": "11.0.x-cpu-ml-scala2.12",
+              "num_workers": 5,
+              "node_type_id": "i3.xlarge",
+              "aws_attributes": {
+                "availability": "ON_DEMAND"
+            }
           },
           "spark_python_task": {
             "name": "ab_test",
             "python_file": "telco_churn_mlops/jobs/ab_test/entrypoint.py",
             "parameters": [
               "--conf-file",
-              "file:fuse://conf/ab_test/ab_test_config.json"
+              "conf/ab_test/ab_test_config.json"
             ],
             "libraries": [
               {

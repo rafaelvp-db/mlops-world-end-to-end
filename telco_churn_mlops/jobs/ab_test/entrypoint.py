@@ -1,7 +1,7 @@
 import mlflow
 from telco_churn_mlops.common import Job
 from telco_churn_mlops.pipelines.ab_test import ABTestPipeline
-
+from telco_churn_mlops.pipelines import model_builder
 
 class ABTestJob(Job):
     def launch(self):

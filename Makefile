@@ -50,7 +50,7 @@ execute-builder:
 	dbx execute --job ab_test --deployment-file=conf/ab_test/deployment.json --cluster-id 1011-090100-bait793
 
 execute-ab:
-	dbx execute --job ab_test --deployment-file=conf/ab_test/deployment.json --cluster-id 1011-090100-bait793
+	dbx execute --job ab_test --deployment-file=conf/ab_test/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
 deploy:
 	make deploy-prep && make deploy-builder && make deploy-ab

@@ -1,5 +1,7 @@
 import inspect
 import mlflow
+import sys
+import pickle
 from mlflow.tracking import MlflowClient
 from sklearn.metrics import log_loss
 from pyspark.sql import DataFrame
@@ -7,7 +9,6 @@ from pyspark.sql.functions import lit, col
 
 from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
 from telco_churn_mlops.jobs.utils import export_df
-from telco_churn_mlops.pipelines import model_builder
 
 
 class ABTestPipeline:
@@ -42,11 +43,20 @@ class ABTestPipeline:
 
     def _score_model(self, df: DataFrame, version: str) -> DataFrame:
         
-        client = MlflowClient()
-        model_version_info = client.get_model_version(name = self.model_name, version = version)
-        module_path = inspect.getfile(model_builder)
+        from telco_churn_mlops.pipelines import model_builder as builder
+        module_path = inspect.getfile(builder)
         index = module_path.rindex("/")
-        dst = module_path[:index]
-        model = mlflow.sklearn.load_model(model_uri = model_version_info.source, dst = dst)
+        dst_path = module_path[:index]
+        sys.path.insert(1, dst_path)
+        #import model_builder
+
+        client = MlflowClient()
+        from mlflow.artifacts import download_artifacts
+        model_version_info = client.get_model_version(name = self.model_name, version = version)
+        #model = mlflow.sklearn.load_model(model_uri = model_version_info.source, dst_path = dst_path)
+        download_artifacts(artifact_uri = model_version_info.source, dst_path = dst_path)
+        model = None
+        with open(f"{dst_path}/model/model.pkl", "rb") as file:
+            model = pickle.load(file)
         pred = model.predict_proba(df.drop("Churn", axis=1))
         return {"loss": pred}

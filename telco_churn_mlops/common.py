@@ -83,7 +83,8 @@ class Job(ABC):
             )
             config = yaml.safe_load(conf_file_content)
         else:
-            config = yaml.safe_load(pathlib.Path(conf_file).read_text())
+            conf_path = pathlib.Path(__file__).parent.absolute()
+            config = yaml.safe_load(pathlib.Path(f"{conf_path}/{conf_file}").read_text())
         return config
 
     def _prepare_logger(self) -> Logger:

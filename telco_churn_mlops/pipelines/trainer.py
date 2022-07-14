@@ -135,8 +135,8 @@ class ModelTrainingPipeline:
             model_info = mlflow.sklearn.log_model(
                 sk_model=xgb_model_best,
                 artifact_path="model",
-                pip_requirements=self._pip_requirements,
-                code_paths=[self._model_builder_path],
+                pip_requirements=self._pip_requirements
+                #code_paths=[self._model_builder_path],
             )
 
             self.model_info = model_info

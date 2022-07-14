@@ -62,7 +62,7 @@ class Job(ABC):
             return {}
         else:
             self.logger.info(f"Conf file was provided, reading configuration from {conf_file}")
-            config = self._read_config(conf_file)
+            config = self._read_config(conf_file = conf_file)
             self.logger.info(f"Conf file path: {config}")
             return config
 
@@ -73,10 +73,17 @@ class Job(ABC):
         namespace = p.parse_known_args(sys.argv[1:])[0]
         return namespace.conf_file
 
-    @staticmethod
-    def _read_config(conf_file) -> Dict[str, Any]: 
-        filename = conf_file.replace("dbfs:/", "/dbfs/")
-        config = yaml.safe_load(pathlib.Path(filename).read_text())
+    def _read_config(self, conf_file) -> Dict[str, Any]:
+        if "s3://" in conf_file or "dbfs:/" in conf_file:
+            conf_file_content = "\n".join(
+                self.spark.read.format("text")
+                .load(conf_file)
+                .toPandas()["value"]
+                .tolist()
+            )
+            config = yaml.safe_load(conf_file_content)
+        else:
+            config = yaml.safe_load(pathlib.Path(conf_file).read_text())
         return config
 
     def _prepare_logger(self) -> Logger:

@@ -1,3 +1,4 @@
+import inspect
 import mlflow
 from mlflow.tracking import MlflowClient
 from sklearn.metrics import log_loss
@@ -43,6 +44,9 @@ class ABTestPipeline:
         
         client = MlflowClient()
         model_version_info = client.get_model_version(name = self.model_name, version = version)
-        model = mlflow.sklearn.load_model(model_uri = model_version_info.source)
+        module_path = inspect.getfile(model_builder)
+        index = module_path.rindex("/")
+        dst = module_path[:index]
+        model = mlflow.sklearn.load_model(model_uri = model_version_info.source, dst = dst)
         pred = model.predict_proba(df.drop("Churn", axis=1))
         return {"loss": pred}

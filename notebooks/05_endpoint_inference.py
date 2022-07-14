@@ -33,13 +33,13 @@ os.environ["DATABRICKS_TOKEN"] = token
 # Get some data
 df_test = export_df(f"{db_name}.testing")
 
+df_test.head()
+
+# COMMAND ----------
+
 # Make predictions
 result = score_model(df_test[0])
 
 # COMMAND ----------
 
 result
-
-# COMMAND ----------
-
-

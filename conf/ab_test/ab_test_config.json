@@ -1,10 +1,7 @@
 {
-  "output_format": "delta",
-  "experiment-path": "/Shared/dbx/projects/lendingclubscoringdbx-rvp",
-  "data-path": "dbfs:/databricks-datasets/samples/lending_club/parquet",
-  "model-name": "LendingClubScoringModelRVP",
-  "output-path": "dbfs:/tmp/rvp/le_abtest",
+  "model_name": "telco_churn_model",
   "prod_version": "18",
   "test_version": "19",
-  "experiment_name": "telco_churn_mlops_experiment" 
+  "experiment_name": "telco_churn_mlops_experiment",
+  "db_name": "telcochurndb" 
 }

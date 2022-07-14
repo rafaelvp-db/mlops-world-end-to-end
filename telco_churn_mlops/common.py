@@ -18,6 +18,7 @@ class Job(ABC):
             self.conf = init_conf
         else:
             self.conf = self._provide_config()
+            self.logger.info(f"Conf: {self.conf}")
         self._log_conf()
 
     @staticmethod
@@ -61,7 +62,9 @@ class Job(ABC):
             return {}
         else:
             self.logger.info(f"Conf file was provided, reading configuration from {conf_file}")
-            return self._read_config(conf_file)
+            config = self._read_config(conf_file)
+            self.logger.info(f"Conf file path: {config}")
+            return config
 
     @staticmethod
     def _get_conf_file():
@@ -71,8 +74,9 @@ class Job(ABC):
         return namespace.conf_file
 
     @staticmethod
-    def _read_config(conf_file) -> Dict[str, Any]:
-        config = yaml.safe_load(pathlib.Path(conf_file).read_text())
+    def _read_config(conf_file) -> Dict[str, Any]: 
+        filename = conf_file.replace("dbfs:/", "/dbfs/")
+        config = yaml.safe_load(pathlib.Path(filename).read_text())
         return config
 
     def _prepare_logger(self) -> Logger:

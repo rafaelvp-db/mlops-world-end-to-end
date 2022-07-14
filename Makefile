@@ -37,6 +37,9 @@ deploy-prep:
 deploy-builder:
 	dbx deploy --deployment-file=conf/build_model/deployment.json
 
+deploy-ab:
+	dbx deploy --deployment-file=conf/ab_test/deployment.json
+
 launch-data:
 	dbx launch --job data_prep --trace
 
@@ -44,4 +47,4 @@ launch-builder:
 	dbx launch --job build_model --trace
 
 deploy:
-	make deploy-data-prep && make deploy-build-model && make deploy-ab
+	make deploy-prep && make deploy-builder && make deploy-ab

@@ -41,4 +41,4 @@ launch-builder:
 	source .venv/bin/activate && dbx launch --job build_model --trace
 
 deploy:
-	make deploy-data-prep && make deploy-build-model
+	make deploy-prep && make deploy-builder

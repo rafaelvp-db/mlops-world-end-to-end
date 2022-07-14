@@ -37,8 +37,8 @@ deploy-prep:
 deploy-builder:
 	dbx deploy --deployment-file=conf/build_model/deployment.json
 
-deploy-ab:
-	dbx deploy --deployment-file=conf/ab_test/deployment.json
+deploy-model:
+	dbx deploy --deployment-file=conf/deploy_model/deployment.json
 
 launch-data:
 	dbx launch --job data_prep --trace
@@ -47,10 +47,10 @@ launch-builder:
 	dbx launch --job build_model --trace
 
 execute-builder:
-	dbx execute --job ab_test --deployment-file=conf/ab_test/deployment.json --cluster-id 1011-090100-bait793
+	dbx execute --job build_model --deployment-file=conf/build_model/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
-execute-ab:
-	dbx execute --job ab_test --deployment-file=conf/ab_test/deployment.json --cluster-name "Shared Autoscaling EMEA"
+execute-deploy:
+	dbx execute --job deploy_model --deployment-file=conf/deploy_model/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
 deploy:
-	make deploy-prep && make deploy-builder && make deploy-ab
+	make deploy-prep && make deploy-builder && make deploy-model

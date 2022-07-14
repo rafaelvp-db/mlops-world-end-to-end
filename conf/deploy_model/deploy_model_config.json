@@ -1,0 +1,5 @@
+{
+    "db_name": "telcochurndb",
+    "experiment_name": "telco_churn_mlops_experiment",
+    "model_name": "telco_churn_model"
+}

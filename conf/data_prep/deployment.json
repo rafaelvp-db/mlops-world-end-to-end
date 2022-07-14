@@ -1,36 +1,32 @@
 {
-    "default": {
-      "jobs": [
-        {
-          "name": "prepare_data",
-          "job_clusters": [
-            {
-              "job_cluster_key": "telcochurn_cluster",
-              "new_cluster": {
-                "spark_version": "11.0.x-cpu-ml-scala2.12",
-                "num_workers": 5,
-                "node_type_id": "i3.xlarge",
-                "aws_attributes": {
-                  "availability": "ON_DEMAND"
-                }
-              }
-            }
+  "default": {
+    "jobs": [
+      {
+        "name": "prep_data",
+        "new_cluster": {
+            "spark_version": "11.0.x-cpu-ml-scala2.12",
+            "num_workers": 5,
+            "node_type_id": "i3.xlarge",
+            "aws_attributes": {
+              "availability": "ON_DEMAND"
+          }
+        },
+        "spark_python_task": {
+          "name": "prep_data",
+          "python_file": "telco_churn_mlops/jobs/data/entrypoint.py",
+          "parameters": [
+            "--conf-file",
+            "conf/data_prep/data_prep_config.json"
           ],
-          "tasks": [
+          "libraries": [
             {
-              "task_key": "prepare_data",
-              "job_cluster_key": "telcochurn_cluster",
-              "spark_python_task": {
-                "name": "prepare_data",
-                "python_file": "telco_churn_mlops/jobs/data/entrypoint.py",
-                "parameters": [
-                  "--conf-file",
-                  "conf/data_prep/data_prep_config.json"
-                ]
+              "pypi": {
+                "package": "-r telco_churn_mlops/pipelines/requirements.txt"
               }
             }
           ]
         }
-      ]
-    }
+      }
+    ]
   }
+}

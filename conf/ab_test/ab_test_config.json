@@ -1,7 +1,0 @@
-{
-  "model_name": "telco_churn_model",
-  "prod_version": "18",
-  "test_version": "19",
-  "experiment_name": "telco_churn_mlops_experiment",
-  "db_name": "telcochurndb" 
-}

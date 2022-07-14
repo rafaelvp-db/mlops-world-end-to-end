@@ -5,6 +5,7 @@ from mlflow.models.signature import infer_signature
 import numpy as np
 from sklearn.metrics import log_loss, accuracy_score, average_precision_score
 
+from telco_churn_mlops.pipelines import model_builder
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from typing import List
 from telco_churn_mlops.jobs.utils import export_df, compute_weights
@@ -31,7 +32,7 @@ class ModelTrainingPipeline:
         self._experiment_name = experiment_name
         self._pip_requirements = pip_requirements
         self._model_name = model_name
-        self._model_builder_path = inspect.getfile(ModelBuilder)
+        self._model_builder_path = inspect.getfile(model_builder)
         self._model_builder = ModelBuilder()
 
     def _calculate_scale(self, decimal_places=3):
@@ -44,8 +45,9 @@ class ModelTrainingPipeline:
         self.X_test, self.y_test = export_df(f"{self._db_name}.{self._testing_table}")
 
     def _train_wrapper(self, params):
-        model = self._model_builder.train_model(params, self.X_train, self.y_train)
-        print(f"model: {model}")
+        model = self._model_builder.build_pipeline(params)
+        model.fit(self.X_train, self.y_train)
+        #model = self._model_builder.train_model(params, self.X_train, self.y_train)
         prob = model.predict_proba(self.X_train)
         loss = log_loss(self.y_train, prob[:, 1])
         mlflow.log_metrics(

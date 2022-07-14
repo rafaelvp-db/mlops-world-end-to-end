@@ -2,7 +2,7 @@
   "default": {
     "jobs": [
       {
-        "name": "build_model",
+        "name": "deploy_model",
         "new_cluster": {
             "spark_version": "11.0.x-cpu-ml-scala2.12",
             "num_workers": 5,
@@ -12,11 +12,11 @@
           }
         },
         "spark_python_task": {
-          "name": "build_model",
-          "python_file": "telco_churn_mlops/jobs/model/entrypoint.py",
+          "name": "deploy_model",
+          "python_file": "telco_churn_mlops/jobs/deploy/entrypoint.py",
           "parameters": [
             "--conf-file",
-            "conf/build_model/build_model_config.json"
+            "conf/deploy_model/deploy_model_config.json"
           ],
           "libraries": [
             {

@@ -3,7 +3,7 @@ import tempfile
 import os
 import shutil
 
-from telco_churn_mlops.jobs.train.entrypoint import TrainModelJob
+from telco_churn_mlops.jobs.model.entrypoint import TrainModelJob
 from pyspark.sql import SparkSession
 from delta import configure_spark_with_delta_pip
 from unittest.mock import MagicMock

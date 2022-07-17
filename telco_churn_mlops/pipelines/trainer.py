@@ -4,16 +4,17 @@ import mlflow
 from mlflow.models.signature import infer_signature
 import numpy as np
 from sklearn.metrics import log_loss, accuracy_score, average_precision_score
-
+from sklearn.utils.class_weight import compute_class_weight
 from telco_churn_mlops.pipelines import model_builder
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from typing import List
-from telco_churn_mlops.jobs.utils import export_df, compute_weights
+from telco_churn_mlops.pipelines.utils import export_df
 
 
 class ModelTrainingPipeline:
     def __init__(
         self,
+        spark,
         db_name: str = "telcochurndb",
         training_table: str = "training",
         testing_table: str = "testing",
@@ -27,6 +28,7 @@ class ModelTrainingPipeline:
         ],
     ):
         self._db_name = db_name
+        self._spark = spark
         self._training_table = training_table
         self._testing_table = testing_table
         self._experiment_name = experiment_name
@@ -36,13 +38,19 @@ class ModelTrainingPipeline:
         self._model_builder = ModelBuilder()
 
     def _calculate_scale(self, decimal_places=3):
-        self.scale = np.round(compute_weights(self.y_train), decimal_places)
+        self.scale = np.round(self.compute_weights(self.y_train), decimal_places)
 
     def _get_splits(self):
         self.X_train, self.y_train = export_df(
-            f"{self._db_name}.{self._training_table}"
+            spark = self._spark,
+            db_name = self._db_name,
+            table_name = self._training_table
         )
-        self.X_test, self.y_test = export_df(f"{self._db_name}.{self._testing_table}")
+        self.X_test, self.y_test = export_df(
+            spark = self._spark,
+            db_name = self._db_name,
+            table_name = self._testing_table
+        )
 
     def _train_wrapper(self, params):
         model = self._model_builder.build_pipeline(params)
@@ -96,6 +104,14 @@ class ModelTrainingPipeline:
             )
 
         self._best_params = best_params
+
+    def _compute_weights(y_train):
+        """
+        Define minimum positive class scale factor
+        """
+        weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
+        scale = weights[1] / weights[0]
+        return scale
 
     def run(self, run_name="XGB Final"):
 

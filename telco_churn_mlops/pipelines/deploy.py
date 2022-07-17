@@ -1,18 +1,19 @@
 import mlflow
 from mlflow.tracking import MlflowClient
 import requests
-from telco_churn_mlops.jobs.utils import export_df
-
+from pipelines.utils import export_df
 
 class DeployModelPipeline:
     def __init__(
         self,
+        spark,
         model_name,
         experiment_name,
         token,
         host = "https://e2-demo-field-eng.cloud.databricks.com/api/2.0"
     ):
         self._model_name = model_name
+        self._spark = spark
         self._experiment_path = f"/Shared/{experiment_name}"
         self._client = MlflowClient()
         self._token = token
@@ -86,8 +87,8 @@ class DeployModelPipeline:
 
     def _test_predictions(self, model_version_info):
 
-        model = mlflow.sklearn.load_model(model_uri = model_version_info.source)
-        X_test, y_test = export_df(f"{self._db_name}.testing")
+        model = mlflow.pyfunc.load_model(model_uri = model_version_info.source)
+        X_test, y_test = export_df(self.db_name, self.table_name)
         pred = model.predict(X_test.sample(10))
         
         if pred is not None:

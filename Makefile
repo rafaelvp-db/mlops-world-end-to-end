@@ -1,14 +1,14 @@
-phony: utils wrapper mlflow deploy-data-prep deploy-build-model deploy-db
+.PHONY: utils wrapper mlflow deploy-data-prep deploy-build-model deploy-db data
 
 env:
+	export SYSTEM_VERSION_COMPAT=1 && \
 	python -m venv .venv && \
 	source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -r unit-requirements.txt && \
-	pip install -e .
+	pip install -r unit-requirements.txt
 
 data:
-	wget https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv -O /tmp/ibm_telco_churn.csv
+	wget https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv -O ./data/ibm_telco_churn.csv
 
 utils:
 	source .venv/bin/activate && pytest ./tests/unit/test_utils.py
@@ -29,6 +29,7 @@ flake:
 	flake8 telco_churn_mlops/jobs/ && flake8 telco_churn_mlops/pipelines/
 
 unit:
+	rm -rf spark-warehouse && \
 	source .venv/bin/activate && pip install -e . && pytest tests/unit
 
 deploy-prep:
@@ -45,6 +46,9 @@ launch-data:
 
 launch-builder:
 	dbx launch --job build_model --trace
+
+execute-data:
+	dbx execute --job data_prep --deployment-file=conf/data_prep/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
 execute-builder:
 	dbx execute --job build_model --deployment-file=conf/build_model/deployment.json --cluster-name "Shared Autoscaling EMEA"

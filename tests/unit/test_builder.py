@@ -3,21 +3,19 @@
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from telco_churn_mlops.pipelines.trainer import ModelTrainingPipeline
 
-def test_module():
-    """Basic sanity checks."""
+from fixtures import *
 
+@pytest.fixture
+def pipeline(spark_session):
     builder = ModelBuilder()
-    build_pipeline = builder.build_pipeline
-
-    pass
+    return builder.build_pipeline()
 
 
-def test_build_model(caplog):
+def test_build_model(caplog, pipeline):
     """Test model build."""
 
     result = True
-    builder = ModelBuilder()
-    model = builder.build_pipeline()
+    model = pipeline
     expected_steps = [
         "preprocessor",
         "standardizer",
@@ -32,9 +30,9 @@ def test_build_model(caplog):
     assert result
 
 
-def test_trainer():
+def test_trainer(spark_session):
     """Test trainer."""
 
-    pipeline = ModelTrainingPipeline()
+    pipeline = ModelTrainingPipeline(spark = spark_session)
     pass
     

@@ -1,0 +1,4 @@
+artifact_location: sqlite/1
+experiment_id: '1'
+lifecycle_stage: active
+name: /Shared/telco_churn_xgb

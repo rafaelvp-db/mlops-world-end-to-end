@@ -1,6 +1,7 @@
 import pandas as pd
 from pyspark.sql import functions as F
 
+
 class DataPreparationPipeline:
     def __init__(
         self,
@@ -11,7 +12,6 @@ class DataPreparationPipeline:
         self.spark = spark
         self.db_name = db_name
 
-    
     def stratified_split_train_test(self, df, label, join_on, seed=42, frac=0.1):
         """
         Stratfied split of a Spark DataDrame into a Train and Test sets
@@ -26,8 +26,20 @@ class DataPreparationPipeline:
         df_remaining = df.join(df_frac, on=join_on, how="left_anti")
         return df_frac, df_remaining
 
+    def export_df(self, table_name):
 
-    def prepare_features(sparkDF):
+        telco_df = self.spark.read.format("delta").table(f"{self.db_name}.{table_name}")
+
+        telco_df = self.prepare_features(telco_df)
+        telco_df = self.compute_service_features(telco_df)
+
+        dataset = telco_df.toPandas()
+        X = dataset.drop(["customerID", "Churn"], axis=1)
+        y = dataset["Churn"]
+
+        return X, y
+
+    def prepare_features(self, sparkDF):
         # 0/1 -> boolean
         sparkDF = sparkDF.withColumn("SeniorCitizen", F.col("SeniorCitizen") == 1)
         # Yes/No -> boolean
@@ -81,8 +93,7 @@ class DataPreparationPipeline:
 
         return sparkDF
 
-
-    def compute_service_features(sparkDF):
+    def compute_service_features(self, sparkDF):
         @F.pandas_udf("int")
         def num_optional_services(*cols):
             return sum(map(lambda s: (s == 1).astype("int"), cols))
@@ -120,35 +131,15 @@ class DataPreparationPipeline:
                 "AvgPriceIncrease",
                 F.when(
                     F.col("tenure") > 0,
-                    (F.col("MonthlyCharges") - (F.col("TotalCharges") / F.col("tenure"))),
+                    (
+                        F.col("MonthlyCharges")
+                        - (F.col("TotalCharges") / F.col("tenure"))
+                    ),
                 ).otherwise(0.0),
             )
         )
 
         return sparkDF
-
-
-    def export_df(self, table_name):
-        """
-        Read Delta Table, compute features with prepare_features and compute_service_features
-        then convert into Pandas DF select the main DF for train and validation
-
-        :tableName str: Delta table Name
-        :return: X and y pandas DF
-        """
-
-        telco_df = self.spark.read.format("delta").table(f"{table_name}")
-        telco_df = self.prepare_features(telco_df)
-        telco_df = self.compute_service_features(telco_df)
-
-        dataset = telco_df.toPandas()
-        X = dataset.drop(["customerID", "Churn"], axis=1)
-        y = dataset["Churn"]
-
-        return X, y
-
-
-    
 
 
     def write_into_delta_table(
@@ -167,12 +158,10 @@ class DataPreparationPipeline:
             self.spark.sql(f"DROP TABLE IF EXISTS {db_name}.{table_name}")
             df.write.saveAsTable(f"{db_name}.{table_name}")
 
-
     def to_object(df):
 
         df = df.astype(object)
         return df
-
 
     def to_numeric(df):
 
@@ -193,5 +182,9 @@ class DataPreparationPipeline:
             join_on=join_on,
         )
 
+        print(f"df_train: {df_train}")
+
         for item in [(df_train, "training"), (df_test, "testing")]:
-            self.write_into_delta_table(df=item[0], db_name=self.db_name, table_name=item[1])
+            self.write_into_delta_table(
+                df=item[0], db_name=self.db_name, table_name=item[1]
+            )

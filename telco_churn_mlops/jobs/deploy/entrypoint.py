@@ -10,9 +10,9 @@ class DeployModelJob(Job):
         model_name = self.conf["model_name"]
         experiment_name = self.conf["experiment_name"]
         pipeline = DeployModelPipeline(
-            model_name = model_name,
-            experiment_name = experiment_name,
-            token = os.environ["DATABRICKS_TOKEN"]
+            model_name=model_name,
+            experiment_name=experiment_name,
+            token=os.environ["DATABRICKS_TOKEN"],
         )
         pipeline.run()
         self.logger.info("deploy model job finished!")

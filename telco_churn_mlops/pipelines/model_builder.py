@@ -40,8 +40,8 @@ categorical_features = [
     "gender",
 ]
 
-class ModelBuilder:
 
+class ModelBuilder:
     def build_pipeline(self, params=None) -> Pipeline:
         """
         Builds pipeline.
@@ -54,7 +54,10 @@ class ModelBuilder:
         bool_pipeline = Pipeline(
             steps=[
                 ("cast_type", FunctionTransformer(self._to_object)),
-                ("imputer", SimpleImputer(missing_values=None, strategy="most_frequent")),
+                (
+                    "imputer",
+                    SimpleImputer(missing_values=None, strategy="most_frequent"),
+                ),
                 ("onehot", OneHotEncoder(handle_unknown="ignore")),
             ]
         )
@@ -74,7 +77,9 @@ class ModelBuilder:
             steps=[
                 (
                     "imputer",
-                    SimpleImputer(missing_values=None, strategy="constant", fill_value=""),
+                    SimpleImputer(
+                        missing_values=None, strategy="constant", fill_value=""
+                    ),
                 ),
                 ("onehot", OneHotEncoder(handle_unknown="ignore")),
             ]
@@ -96,7 +101,6 @@ class ModelBuilder:
             ]
         )
 
-
     def _build_model(self, params=None):
 
         xgb_classifier = XGBClassifier()
@@ -116,18 +120,15 @@ class ModelBuilder:
 
         return xgb_classifier
 
-
-    def _to_object(df):
+    def _to_object(self, df):
 
         df = df.astype(object)
         return df
 
-
-    def _to_numeric(df):
+    def _to_numeric(self, df):
 
         df = df.apply(pd.to_numeric, errors="coerce")
         return df
-
 
     def train_model(self, params, X_train, y_train) -> Pipeline:
         """

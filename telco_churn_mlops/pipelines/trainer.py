@@ -1,4 +1,4 @@
-from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
+from hyperopt import hp, fmin, tpe, Trials, SparkTrials, space_eval, STATUS_OK
 import inspect
 import mlflow
 from mlflow.models.signature import infer_signature
@@ -8,7 +8,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from telco_churn_mlops.pipelines import model_builder
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from typing import List
-from telco_churn_mlops.pipelines.utils import export_df
+from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
 
 
 class ModelTrainingPipeline:
@@ -36,26 +36,28 @@ class ModelTrainingPipeline:
         self._model_name = model_name
         self._model_builder_path = inspect.getfile(model_builder)
         self._model_builder = ModelBuilder()
+        self._data_preparation_pipeline = DataPreparationPipeline(
+            spark = self._spark,
+            db_name = self._db_name
+        )
 
     def _calculate_scale(self, decimal_places=3):
-        self.scale = np.round(self.compute_weights(self.y_train), decimal_places)
+        self.scale = np.round(self._compute_weights(self.y_train), decimal_places)
 
     def _get_splits(self):
-        self.X_train, self.y_train = export_df(
-            spark = self._spark,
-            db_name = self._db_name,
-            table_name = self._training_table
+
+        self.X_train, self.y_train = self._data_preparation_pipeline.export_df(
+            table_name=self._training_table
         )
-        self.X_test, self.y_test = export_df(
-            spark = self._spark,
-            db_name = self._db_name,
-            table_name = self._testing_table
+
+        self.X_test, self.y_test = self._data_preparation_pipeline.export_df(
+            table_name=self._testing_table
         )
 
     def _train_wrapper(self, params):
         model = self._model_builder.build_pipeline(params)
         model.fit(self.X_train, self.y_train)
-        #model = self._model_builder.train_model(params, self.X_train, self.y_train)
+        # model = self._model_builder.train_model(params, self.X_train, self.y_train)
         prob = model.predict_proba(self.X_train)
         loss = log_loss(self.y_train, prob[:, 1])
         mlflow.log_metrics(
@@ -94,30 +96,35 @@ class ModelTrainingPipeline:
         best_params = None
 
         mlflow.set_experiment(f"/Shared/{self._experiment_name}")
+        trials = SparkTrials(spark_session = self._spark, parallelism = parallelism)
+        if parallelism == 1:
+            trials = Trials()
         with mlflow.start_run() as run:
             best_params = fmin(
                 fn=self._train_wrapper,
                 space=self._search_space,
                 algo=tpe.suggest,
                 max_evals=max_evals,
-                trials=SparkTrials(parallelism=parallelism),
+                trials=Trials()
             )
 
         self._best_params = best_params
 
-    def _compute_weights(y_train):
+    def _compute_weights(self, y_train):
         """
         Define minimum positive class scale factor
         """
-        weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
+        weights = compute_class_weight(
+            "balanced", classes=np.unique(y_train), y=y_train
+        )
         scale = weights[1] / weights[0]
         return scale
 
-    def run(self, run_name="XGB Final"):
+    def run(self, parallelism = 5, run_name="XGB Final"):
 
         self._get_splits()
         self._initialize_search_space()
-        self._get_best_params()
+        self._get_best_params(parallelism = parallelism)
         # configure params
         params = space_eval(self._search_space, self._best_params)
         # train model with optimal settings
@@ -154,7 +161,7 @@ class ModelTrainingPipeline:
                 sk_model=xgb_model_best,
                 artifact_path="model",
                 pip_requirements=self._pip_requirements
-                #code_paths=[self._model_builder_path],
+                # code_paths=[self._model_builder_path],
             )
 
             self.model_info = model_info

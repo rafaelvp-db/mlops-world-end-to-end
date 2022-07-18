@@ -8,8 +8,8 @@ def db_name():
 
 @pytest.fixture
 def spark_session():
-    sc = SparkContext.getOrCreate()
-    spark = SparkSession.builder.master(sc.master) \
+    
+    spark = SparkSession.builder.master("local[1]") \
                     .appName('telcochurn') \
                     .getOrCreate()
 

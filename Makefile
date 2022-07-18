@@ -1,36 +1,35 @@
 .PHONY: utils wrapper mlflow deploy-data-prep deploy-build-model deploy-db data
 
+.SECONDARY: env
+
 env:
 	export SYSTEM_VERSION_COMPAT=1 && \
 	python -m venv .venv && \
 	source .venv/bin/activate && \
 	pip install --upgrade pip && \
-	pip install -r unit-requirements.txt
+	pip install -r unit-requirements.txt && \
+	pip install -e .
 
 data:
 	wget https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv -O ./data/ibm_telco_churn.csv
 
-utils:
-	source .venv/bin/activate && pytest ./tests/unit/test_utils.py
+builder: env
+	pytest ./tests/unit/test_builder.py
 
-builder:
-	source .venv/bin/activate && pytest ./tests/unit/test_builder.py
+endpoint: env
+	pytest ./tests/integration/test_endpoint.py
 
-endpoint:
-	source .venv/bin/activate && pytest ./tests/integration/test_endpoint.py
-
-model:
-	make utils && make builder
-
-lint:
+format:
 	black telco_churn_mlops/jobs/ && black telco_churn_mlops/pipelines
 
-flake:
+lint:
 	flake8 telco_churn_mlops/jobs/ && flake8 telco_churn_mlops/pipelines/
 
-unit:
-	rm -rf spark-warehouse && \
-	source .venv/bin/activate && pip install -e . && pytest tests/unit
+clean:
+	rm -rf spark-warehouse
+
+unit: env clean
+	export MLFLOW_TRACKING_URI="sqlite:///mlruns.db" && pytest tests/unit
 
 deploy-prep:
 	dbx deploy --deployment-file=conf/data_prep/deployment.json
@@ -41,12 +40,6 @@ deploy-builder:
 deploy-model:
 	dbx deploy --deployment-file=conf/deploy_model/deployment.json
 
-launch-data:
-	dbx launch --job data_prep --trace
-
-launch-builder:
-	dbx launch --job build_model --trace
-
 execute-data:
 	dbx execute --job data_prep --deployment-file=conf/data_prep/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
@@ -56,5 +49,4 @@ execute-builder:
 execute-deploy:
 	dbx execute --job deploy_model --deployment-file=conf/deploy_model/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
-deploy:
-	make deploy-prep && make deploy-builder && make deploy-model
+deploy: deploy-prep deploy-builder deploy-model

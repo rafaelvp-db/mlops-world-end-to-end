@@ -5,9 +5,11 @@ pyyaml
 pytest
 dbx
 pytest-cov
-scikit-learn
+scikit-learn==1.1.1
 mlflow
 xgboost==1.5.0
 hyperopt
 pyarrow
 delta-spark
+black
+flake8

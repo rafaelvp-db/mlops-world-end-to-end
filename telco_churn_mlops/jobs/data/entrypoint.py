@@ -3,15 +3,11 @@ from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
 
 
 class PrepareDataJob(Job):
-
     def launch(self):
         self.logger.info("Launching data prep job")
         db_name = self.conf["db_name"]
-        pipeline = DataPreparationPipeline(
-            spark = self.spark,
-            db_name = db_name
-        )
-        pipeline.write_delta_tables()
+        pipeline = DataPreparationPipeline(spark=self.spark, db_name=db_name)
+        pipeline.run()
         self.logger.info("Data prep job finished!")
 
 

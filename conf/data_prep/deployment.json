@@ -16,7 +16,7 @@
           "python_file": "file://telco_churn_mlops/jobs/data/entrypoint.py",
           "parameters": [
             "--conf-file",
-            "conf/data_prep/data_prep_config.json"
+            "file://conf/data_prep/data_prep_config.json"
           ],
           "libraries": [
             {

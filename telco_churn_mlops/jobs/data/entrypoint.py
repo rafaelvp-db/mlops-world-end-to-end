@@ -6,8 +6,9 @@ class PrepareDataJob(Job):
     def launch(self):
         self.logger.info("Launching data prep job")
         db_name = self.conf["db_name"]
+        input_path = self.conf["input_path"]
         pipeline = DataPreparationPipeline(spark=self.spark, db_name=db_name)
-        pipeline.run()
+        pipeline.run(input_data_path = input_path)
         self.logger.info("Data prep job finished!")
 
 

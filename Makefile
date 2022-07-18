@@ -41,7 +41,7 @@ deploy-model:
 	dbx deploy --deployment-file=conf/deploy_model/deployment.json
 
 execute-data:
-	dbx execute --job data_prep --deployment-file=conf/data_prep/deployment.json --cluster-name "Shared Autoscaling EMEA"
+	dbx execute --job prep_data --deployment-file=conf/data_prep/deployment.json --cluster-name "Shared Autoscaling EMEA"
 
 execute-builder:
 	dbx execute --job build_model --deployment-file=conf/build_model/deployment.json --cluster-name "Shared Autoscaling EMEA"

@@ -2,7 +2,7 @@
   "default": {
     "jobs": [
       {
-        "name": "prep_data2",
+        "name": "prep_data",
         "new_cluster": {
             "spark_version": "11.0.x-cpu-ml-scala2.12",
             "num_workers": 5,
@@ -13,7 +13,7 @@
         },
         "spark_python_task": {
           "name": "prep_data",
-          "python_file": "telco_churn_mlops/jobs/data/entrypoint.py",
+          "python_file": "file://telco_churn_mlops/jobs/data/entrypoint.py",
           "parameters": [
             "--conf-file",
             "conf/data_prep/data_prep_config.json"

@@ -7,6 +7,12 @@ def db_name():
     return "telcochurnmlopsdb"
 
 @pytest.fixture
+def data_prep_init_conf():
+    return {
+        "db_name": "telcochurndb"
+    }
+
+@pytest.fixture
 def spark_session():
     
     spark = SparkSession.builder.master("local[1]") \

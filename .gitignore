@@ -49,3 +49,5 @@ spark-warehouse
 .eggs
 .db
 sqlite
+.egg-info
+*/build

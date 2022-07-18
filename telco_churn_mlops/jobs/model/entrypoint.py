@@ -9,6 +9,7 @@ class TrainModelJob(Job):
 
         pipeline = ModelTrainingPipeline(
             db_name=self.conf["db_name"],
+            spark = self.spark,
             training_table=self.conf["training_table"],
             testing_table=self.conf["testing_table"],
             model_name=self.conf["model_name"],

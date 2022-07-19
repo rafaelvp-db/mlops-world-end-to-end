@@ -1,0 +1,4 @@
+{
+    "db_name": "telcochurndb",
+    "input_path": "data/ibm_telco_churn.csv"
+}

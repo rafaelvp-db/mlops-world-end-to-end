@@ -1,15 +1,15 @@
 """Unit tests for our Model Builder module"""
 
+import pytest
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from telco_churn_mlops.pipelines.trainer import ModelTrainingPipeline
+from tests.fixtures.unit import *
 
-from fixtures import *
 
 @pytest.fixture
 def pipeline(spark_session):
     builder = ModelBuilder()
     return builder.build_pipeline()
-
 
 def test_build_model(caplog, pipeline):
     """Test model build."""

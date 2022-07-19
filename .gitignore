@@ -51,3 +51,5 @@ spark-warehouse
 sqlite
 .egg-info
 */build
+.coverage
+.coverage.*

@@ -1,7 +1,7 @@
 """Unit tests for our Model Builder module"""
 
 import pytest
-from fixtures import *
+from tests.fixtures.unit import *
 from telco_churn_mlops.pipelines.trainer import ModelTrainingPipeline
 
 

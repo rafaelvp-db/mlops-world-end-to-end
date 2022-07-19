@@ -6,16 +6,15 @@ import requests
 from notebooks import utils
 import pandas as pd
 
-VERSION = 18
-URL = 'https://e2-demo-field-eng.cloud.databricks.com/model-endpoint/telco_churn_model/{}/invocations'
+from fixtures import *
 
 
-def test_endpoint():
+def test_endpoint(endpoint_url, version):
     """Basic test prediction endpoint."""
 
-    url = URL.format(VERSION)
+    url = endpoint_url.format(version)
     response = requests.post(url = url)
-    assert response.status_code == 401 #Unauthorized
+    assert response.status_code != 200 #Unauthorized, etc
 
     
     

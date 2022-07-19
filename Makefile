@@ -29,7 +29,8 @@ clean:
 	rm -rf spark-warehouse
 
 unit: env clean
-	export MLFLOW_TRACKING_URI="sqlite:///mlruns.db" && pytest tests/unit
+	export MLFLOW_TRACKING_URI="sqlite:///mlruns.db" && \
+	pytest --cov-report term --cov=telco_churn_mlops tests/unit
 
 deploy-prep:
 	dbx deploy --deployment-file=conf/data_prep/deployment.json

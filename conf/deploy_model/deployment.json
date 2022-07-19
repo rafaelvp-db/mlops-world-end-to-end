@@ -16,7 +16,7 @@
           "python_file": "file://telco_churn_mlops/jobs/deploy/entrypoint.py",
           "parameters": [
             "--conf-file",
-            "conf/deploy_model/deploy_model_config.json"
+            "file://conf/deploy_model/deploy_model_config.json"
           ],
           "libraries": [
             {

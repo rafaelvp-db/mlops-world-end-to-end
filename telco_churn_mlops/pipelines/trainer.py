@@ -171,10 +171,11 @@ class ModelTrainingPipeline:
         self,
         filter_string: str = "status = 'FINISHED'",
         sort_by: str = "metrics.train.log_loss",
+        ascending = True
     ):
 
         df = mlflow.search_runs(filter_string=filter_string)
-        best_run_id = df.sort_values(by=sort_by, ascending=True)["run_id"].values[0]
+        best_run_id = df.sort_values(by=sort_by, ascending = ascending)["run_id"].values[0]
         best_run = mlflow.get_run(run_id=best_run_id)
 
         return best_run

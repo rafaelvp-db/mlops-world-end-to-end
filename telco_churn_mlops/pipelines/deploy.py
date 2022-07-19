@@ -110,7 +110,7 @@ class ModelDeploymentPipeline:
 
     def _test_predictions(self, model_version_info):
 
-        model = mlflow.pyfunc.load_model(model_uri=model_version_info.source)
+        model = mlflow.sklearn.load_model(model_uri=model_version_info.source)
         pipeline = DataPreparationPipeline(self._spark, self._db_name)
         X_test, y_test = pipeline.export_df("testing")
         pred = model.predict(X_test.sample(10))

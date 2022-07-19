@@ -1,11 +1,21 @@
-from hyperopt import hp, fmin, tpe, Trials, SparkTrials, space_eval, STATUS_OK
+from hyperopt import (
+    hp,
+    fmin,
+    tpe,
+    Trials,
+    SparkTrials,
+    space_eval,
+    STATUS_OK
+)
 import inspect
+import os
+import glob
 import mlflow
 from mlflow.models.signature import infer_signature
 import numpy as np
 from sklearn.metrics import log_loss, accuracy_score, average_precision_score
 from sklearn.utils.class_weight import compute_class_weight
-from telco_churn_mlops.pipelines import model_builder
+import telco_churn_mlops
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from typing import List
 from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
@@ -23,9 +33,7 @@ class ModelTrainingPipeline:
         run_name: str = "XGB Final Model",
         pip_requirements: List[str] = [
             "scikit-learn==1.1.1",
-            "xgboost==1.5.0",
-            "pandas",
-            "numpy",
+            "xgboost==1.5.0"
         ],
     ):
         self._db_name = db_name
@@ -36,12 +44,18 @@ class ModelTrainingPipeline:
         self._experiment_name = experiment_name
         self._pip_requirements = pip_requirements
         self._model_name = model_name
-        self._model_builder_path = inspect.getfile(model_builder)
+        self._set_code_path()
         self._model_builder = ModelBuilder()
         self._data_preparation_pipeline = DataPreparationPipeline(
             spark = self._spark,
             db_name = self._db_name
         )
+
+    def _set_code_path(self):
+        code_path = inspect.getfile(telco_churn_mlops)
+        root_path = code_path.replace(code_path.split("/")[-1], "")
+        self._code_path = root_path
+
 
     def _calculate_scale(self, decimal_places=3):
         self.scale = np.round(self._compute_weights(self.y_train), decimal_places)
@@ -162,7 +176,8 @@ class ModelTrainingPipeline:
             model_info = mlflow.sklearn.log_model(
                 sk_model=xgb_model_best,
                 artifact_path="model",
-                pip_requirements=self._pip_requirements
+                pip_requirements=self._pip_requirements,
+                code_paths = [self._code_path]
             )
 
             self.model_info = model_info

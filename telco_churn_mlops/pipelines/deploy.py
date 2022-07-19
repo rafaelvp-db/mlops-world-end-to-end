@@ -13,11 +13,13 @@ class ModelDeploymentPipeline:
         db_name,
         model_name,
         experiment_name,
+        run_name,
         host="https://e2-demo-field-eng.cloud.databricks.com/api/2.0",
     ):
         self._model_name = model_name
         self._spark = spark
         self._db_name = db_name
+        self._run_name = run_name
         self._experiment_path = f"/Shared/{experiment_name}"
         self._client = MlflowClient()
         self._host = host
@@ -33,10 +35,10 @@ class ModelDeploymentPipeline:
 
         df = mlflow.search_runs(
             experiment_ids=[experiment.experiment_id],
-            filter_string=f"status = '{status}'",
+            filter_string=f"status = '{status}'"
         )
 
-        best_run_id = df.sort_values(sort_by, ascending = ascending)["run_id"].values[0]
+        best_run_id = df["run_id"].values[0]
 
         return best_run_id
 
@@ -78,7 +80,7 @@ class ModelDeploymentPipeline:
             print("No versions to be promoted")
             return None
 
-        target_version = model_version_info.version
+        source_version = model_version_info.version
         current_stage = model_version_info.current_stage
 
         if best_run_id == model_version_info.run_id:
@@ -99,10 +101,10 @@ class ModelDeploymentPipeline:
             self._client.transition_model_version_stage(
                 name=self._model_name,
                 version=target_version,
-                stage=current_stage
+                stage="Staging"
             )
 
-            model_version_info.stage = "Production"
+            model_version_info.stage = "Staging"
             return model_version_info
 
 
@@ -138,12 +140,12 @@ class ModelDeploymentPipeline:
             self._client.transition_model_version_stage(
                 name=self._model_name,
                 version=target_version,
-                stage=from_stage,
+                stage="Production",
                 archive_existing_versions=True,
             )
             print(
                 f"""Transitioned model {self._model_name} to Production,
-                    model info: {model_version_info.version}"""
+                    model version: {model_version_info.version}"""
             )
         else:
             print("No versions in Staging, existing...")
@@ -164,6 +166,7 @@ class ModelDeploymentPipeline:
 
     def run(self):
 
+        best_run_id = self._get_candidate()
         self._promote_to_staging(best_run_id=best_run_id)
         self._promote_to_production(best_run_id=best_run_id)
         self._enable_endpoint()

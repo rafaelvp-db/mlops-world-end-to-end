@@ -20,6 +20,7 @@ class ModelTrainingPipeline:
         testing_table: str = "testing",
         experiment_name: str = "telco_churn_xgb",
         model_name: str = "xgboost",
+        run_name: str = "XGB Final Model",
         pip_requirements: List[str] = [
             "scikit-learn==1.1.1",
             "xgboost==1.5.0",
@@ -28,6 +29,7 @@ class ModelTrainingPipeline:
         ],
     ):
         self._db_name = db_name
+        self._run_name = run_name
         self._spark = spark
         self._training_table = training_table
         self._testing_table = testing_table
@@ -99,7 +101,7 @@ class ModelTrainingPipeline:
         trials = SparkTrials(spark_session = self._spark, parallelism = parallelism)
         if parallelism == 1:
             trials = Trials()
-        with mlflow.start_run() as run:
+        with mlflow.start_run(run_name = self._run_name) as run:
             best_params = fmin(
                 fn=self._train_wrapper,
                 space=self._search_space,
@@ -120,7 +122,7 @@ class ModelTrainingPipeline:
         scale = weights[1] / weights[0]
         return scale
 
-    def run(self, parallelism = 5, run_name="XGB Final"):
+    def run(self, parallelism = 5):
 
         self._get_splits()
         self._initialize_search_space()
@@ -128,7 +130,7 @@ class ModelTrainingPipeline:
         # configure params
         params = space_eval(self._search_space, self._best_params)
         # train model with optimal settings
-        with mlflow.start_run(run_name=run_name) as run:
+        with mlflow.start_run(run_name = self._run_name) as run:
 
             # capture run info for later use
             run_id = run.info.run_id
@@ -161,7 +163,6 @@ class ModelTrainingPipeline:
                 sk_model=xgb_model_best,
                 artifact_path="model",
                 pip_requirements=self._pip_requirements
-                # code_paths=[self._model_builder_path],
             )
 
             self.model_info = model_info

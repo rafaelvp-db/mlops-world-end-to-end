@@ -47,7 +47,8 @@ __pycache__
 */.pytest_cache
 spark-warehouse
 .eggs
-.db
+*.db
+mlruns.db
 sqlite
 .egg-info
 */build

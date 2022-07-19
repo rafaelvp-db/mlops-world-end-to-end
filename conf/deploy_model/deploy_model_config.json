@@ -1,5 +1,6 @@
 {
     "db_name": "telcochurndb",
     "experiment_name": "telco_churn_mlops_experiment",
-    "model_name": "telco_churn_model"
+    "model_name": "telco_churn_model",
+    "run_name": "XGB Final Model"
 }

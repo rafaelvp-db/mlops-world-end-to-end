@@ -21,7 +21,7 @@
           "libraries": [
             {
               "pypi": {
-                "package": "-r telco_churn_mlops/pipelines/requirements.txt"
+                "package": "scikit-learn==1.1.1 xgboost==1.5.0"
               }
             }
           ]

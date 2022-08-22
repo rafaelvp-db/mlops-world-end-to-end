@@ -1,15 +1,19 @@
 from typing import Dict
 
 import mlflow
+from mlflow.models.signature import infer_signature
+
 import numpy as np
 import pandas as pd
-from sklearn.metrics import log_loss, accuracy_score
+
+from sklearn.metrics import average_precision_score, accuracy_score, log_loss
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
-
 from xgboost import XGBClassifier
+
+from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
 
 
 def build_pipeline(params) -> Pipeline:
@@ -149,3 +153,25 @@ def train_model(params, X_train, y_train) -> Pipeline:
     model = build_pipeline(params)
     model.fit(X_train, y_train)
     return model
+
+  
+def try_parse(str_value) -> float:
+  
+  result = str_value
+  try:
+    result = float(str_value)
+  except ValueError:
+    print(f"{str_value} can't be parsed to float, returning string...")
+  return result
+
+def calculate_metrics(target_metrics: dict, predicted, labels, stage = "train"):
+  
+  metric_results = {}
+  for key in target_metrics.keys():
+    if "accuracy" in key:
+      metric_value = target_metrics[key](labels, np.round(predicted[:,1]))
+    else:
+      metric_value = target_metrics[key](labels, predicted[:,1])
+    metric_results[f"{stage}.{key}"] = metric_value
+  
+  return metric_results

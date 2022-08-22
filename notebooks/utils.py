@@ -4,6 +4,11 @@
 """
 
 
+# *****
+# Importing Modules
+# *****
+
+
 import tempfile
 import os
 import pickle
@@ -14,6 +19,10 @@ import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from sklearn.utils.class_weight import compute_class_weight
 
+
+# *****
+# Data Ingestion / Read / Write Section
+# *****
 
 def stratified_split_train_test(df, label, join_on, seed=42, frac=0.1):
     """
@@ -29,6 +38,44 @@ def stratified_split_train_test(df, label, join_on, seed=42, frac=0.1):
     df_remaining = df.join(df_frac, on=join_on, how="left_anti")
     return df_frac, df_remaining
 
+
+def export_df(table_name):
+    """
+    Read Delta Table, compute features with prepare_features and compute_service_features
+    then convert into Pandas DF select the main DF for train and validation
+
+    :tableName str: Delta table Name
+    :return: X and y pandas DF
+    """
+    spark = SparkSession.builder.getOrCreate()
+    telco_df = spark.read.format("delta").table(f"{table_name}")
+
+    telco_df = prepare_features(telco_df)
+    telco_df = compute_service_features(telco_df)
+
+    dataset = telco_df.toPandas()
+    X = dataset.drop(["customerID", "Churn"], axis=1)
+    y = dataset["Churn"]
+
+    return X, y
+
+
+def write_into_delta_table(
+    df, path, schema_option="overwriteSchema", mode="overwrite", table_type="managed"
+):
+    if table_type == "managed":
+        df.write.format("delta").mode(mode).option(schema_option, "true").saveAsTable(
+            path
+        )
+    else:
+        # you need to provide the full path
+        # example : /mnt/project/delta_
+        df.write.format("delta").mode(mode).option(schema_option, "true").save(path)
+
+  
+# *****
+# Data Prep Section
+# *****  
 
 def prepare_features(sparkDF):
     # 0/1 -> boolean
@@ -131,49 +178,6 @@ def compute_service_features(sparkDF):
     return sparkDF
 
 
-def export_df(table_name):
-    """
-    Read Delta Table, compute features with prepare_features and compute_service_features
-    then convert into Pandas DF select the main DF for train and validation
-
-    :tableName str: Delta table Name
-    :return: X and y pandas DF
-    """
-    spark = SparkSession.builder.getOrCreate()
-    telco_df = spark.read.format("delta").table(f"{table_name}")
-
-    telco_df = prepare_features(telco_df)
-    telco_df = compute_service_features(telco_df)
-
-    dataset = telco_df.toPandas()
-    X = dataset.drop(["customerID", "Churn"], axis=1)
-    y = dataset["Churn"]
-
-    return X, y
-
-
-def compute_weights(y_train):
-    """
-    Define minimum positive class scale factor
-    """
-    weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
-    scale = weights[1] / weights[0]
-    return scale
-
-
-def write_into_delta_table(
-    df, path, schema_option="overwriteSchema", mode="overwrite", table_type="managed"
-):
-    if table_type == "managed":
-        df.write.format("delta").mode(mode).option(schema_option, "true").saveAsTable(
-            path
-        )
-    else:
-        # you need to provide the full path
-        # example : /mnt/project/delta_
-        df.write.format("delta").mode(mode).option(schema_option, "true").save(path)
-
-
 def to_object(df):
 
     df = df.astype(object)
@@ -184,3 +188,16 @@ def to_numeric(df):
 
     df = df.apply(pd.to_numeric, errors="coerce")
     return df
+
+  
+def compute_weights(y_train):
+    """
+    Define minimum positive class scale factor
+    """
+    weights = compute_class_weight("balanced", classes=np.unique(y_train), y=y_train)
+    scale = weights[1] / weights[0]
+    return scale
+  
+
+
+

@@ -10,8 +10,7 @@
 dbutils.widgets.text("reinitialize", "True")
 dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("input_data_path", "dbfs:/tmp/ibm_telco_churn.csv")
-
-reinitialize = bool(dbutils.widgets.get("reinitialize"))
+reinitialize = dbutils.widgets.get("reinitialize") # returns a str all the time, bool returns True 
 db_name = dbutils.widgets.get("db_name")
 input_data_path = dbutils.widgets.get("input_data_path")
 
@@ -23,10 +22,22 @@ from utils import stratified_split_train_test, write_into_delta_table
 
 # COMMAND ----------
 
-if reinitialize: 
-  spark.sql(f"drop database if exists {db_name}")
-  spark.sql(f"create database {db_name}")
+reinitialize == "False"
 
+# COMMAND ----------
+
+if reinitialize: 
+  if reinitialize=="False":
+    print("Do nothing")
+    pass
+  if reinitialize=="True":
+    print("Hello we are reinitializing our DataBase, please keep hold")
+    spark.sql(f"drop database if exists {db_name}")
+    spark.sql(f"create database {db_name}")
+# else goes directly 
+#   else:
+#     raise print("This option was not implemented yet")
+  
 telco_df_raw = spark.read.option("header", True).csv(input_data_path)
 df_train, df_test = stratified_split_train_test(
   df = telco_df_raw,

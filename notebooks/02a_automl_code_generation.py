@@ -32,7 +32,7 @@ import pandas as pd
 input_temp_dir = os.path.join(os.environ["SPARK_LOCAL_DIRS"], "tmp", str(uuid.uuid4())[:8])
 os.makedirs(input_temp_dir)
 
-
+# PLEASE KEEP IN MIND THAT YOUR DATASET MAYBE SAMPLED
 # Download the artifact and read it into a pandas DataFrame
 input_client = MlflowClient()
 input_data_path = input_client.download_artifacts("737b6960ca8645669762e0aaa9dfe3dd", "data", input_temp_dir)
@@ -43,6 +43,57 @@ shutil.rmtree(input_temp_dir)
 
 # Preview data
 df_loaded.head(5)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### EDA with Bamboolib 
+
+# COMMAND ----------
+
+# STEP 1: RUN THIS CELL TO INSTALL BAMBOOLIB
+
+# You can also install bamboolib on the cluster. Just talk to your cluster admin for that
+#%pip install bamboolib # I have it installed directly on my cluster 
+
+# COMMAND ----------
+
+# STEP 2: RUN THIS CELL TO IMPORT AND USE BAMBOOLIB
+
+import bamboolib as bam
+
+# This opens a UI from which you can import your data
+bam  
+
+# Already have a pandas data frame? Just display it!
+# Here's an example
+# import pandas as pd
+# df_test = pd.DataFrame(dict(a=[1,2]))
+# df_test  # <- You will see a green button above the data set if you display it
+
+# COMMAND ----------
+
+df_loaded
+
+# COMMAND ----------
+
+import plotly.express as px
+fig = px.histogram(df_loaded, x='SeniorCitizen', color='Churn')
+fig
+
+# COMMAND ----------
+
+import plotly.express as px
+fig = px.treemap(df_loaded, path=['Churn', 'gender', 'SeniorCitizen', 'MultipleLines','Contract'])
+fig
+
+# COMMAND ----------
+
+import plotly.express as px
+fig = px.scatter(df_loaded, x='tenure', color='Churn', y='TotalCharges')
+fig.update_yaxes(type='log', tickformat='.1e')
+fig.update_xaxes(type='log', tickformat='.1e')
+fig
 
 # COMMAND ----------
 

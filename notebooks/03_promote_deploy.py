@@ -1,6 +1,6 @@
 # Databricks notebook source
-!pip install scikit-learn==1.1.1
-!pip install xgboost==1.5.0
+# !pip install scikit-learn==1.1.1
+# !pip install xgboost==1.5.0
 
 # COMMAND ----------
 
@@ -35,59 +35,97 @@ best_run_id
 from mlflow.tracking import MlflowClient
 client = MlflowClient()
 
-client.set_tag(run_id, key='demographic_vars', value='seniorCitizen,gender_Female')
-client.set_tag(run_id, key='db_table', value=f'{db_name}.training')
+client.set_tag(best_run_id, key='demographic_vars', value='seniorCitizen,gender_Female')
+client.set_tag(best_run_id, key='db_table', value=f'{db_name}.training')
 
 # COMMAND ----------
 
 # DBTITLE 1,Transition to Staging
-model_version_info = client.get_latest_versions(name = model_name, stages = ["None"])[0]
 target_version = None
 target_stage = "Staging"
+update_model_desc = None 
+model_desc_str = """ This model predicts whether a customer will churn.  
+It is used to update the Telco Churn Dashboard in DB SQL."""
+model_version_desc = """This model version was built using XGBoost, with the best hyperparameters set identified with HyperOpt."""
 
-if best_run_id == model_version_info.run_id:
-  target_version = model_version_info.version
-  client.transition_model_version_stage(
-    name = model_name,
-    version = target_version,
-    stage = target_stage
-  )
-  
-  #Updating model version in Staging 
-  #The main model description, typically done once.
-  client.update_registered_model(
-    name=model_version_info.name,
-    description="This model predicts whether a customer will churn.  It is used to update the Telco Churn Dashboard in DB SQL."
-  )
+try: 
+  # Please keep in mind that if there is not a model in each of the stage this will give an error that the length of the list is not acceptable (because we are calling [0] the object)
+  model_version_latest = client.get_latest_versions(name = model_name, stages = ["None"])[0]
+  if best_run_id == model_version_latest.run_id:
+    model_version_info = model_version_latest
+    target_version = model_version_info.version
+    
+    client.transition_model_version_stage(
+      name = model_name,
+      version = target_version,
+      stage = target_stage
+    )
 
-  #Gives more details on this specific model version
-  client.update_model_version(
-    name=model_version_info.name,
-    version=model_version_info.version,
-    description="This model version was built using XGBoost, with the best hyperparameters set identified with HyperOpt."
-  )
+    #Updating model version in Staging 
+    if update_model_desc:
+      #The main model description, typically done once.
+      client.update_registered_model(
+        name=model_version_info.name,
+        description=model_desc_str
+      )
+
+    #Gives more details on this specific model version
+    client.update_model_version(
+      name=model_version_info.name,
+      version=model_version_info.version,
+      description=model_version_desc
+    )
+
+    print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
+except:
+  print( "There is not a model in a staging None, your best model was already transferred into a new Stage")
   
-print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
+
+# COMMAND ----------
+
+target_stage
 
 # COMMAND ----------
 
 # DBTITLE 1,Test Predictions
-from utils import export_df
+try:  
+  # Please keep in mind that if there is not a model in each of the stage this will give an error that the length of the list is not acceptable (because we are calling [0] the object)
+  model_version_inStage = client.get_latest_versions(name = model_name, stages = ["Staging"], )[0]
+  if best_run_id == model_version_inStage.run_id: 
+    model_version_info = model_version_inStage
+    target_version = model_version_info.version
+    print("Your model is already in Staging")
+    from utils import export_df
 
-current_stage = target_stage
-model_version_info = client.get_latest_versions(name = model_name, stages = [current_stage])[0]
+    current_stage = target_stage
+    model_version_info = client.get_latest_versions(name = model_name, stages = [current_stage])[0]
 
-model = mlflow.sklearn.load_model(model_uri = model_version_info.source)
-X_test, y_test = export_df(f"{db_name}.testing")
-pred = model.predict(X_test.sample(10))
-if pred is not None:
-  print("Predictions OK")
-  target_version = None
-  target_stage = "Production"
+    print("Loading our model to test predictions")
+    model = mlflow.sklearn.load_model(model_uri = model_version_info.source)
+    X_test, y_test = export_df(f"{db_name}.testing")
+    pred = model.predict(X_test.sample(10))
+    
+    if pred is not None:
+      print("Predictions OK")
+      target_version = None
+      target_stage = "Production"
+    
+except:
+  print("There is not model in a Staging")
+
+
+
+# COMMAND ----------
+
+target_stage
 
 # COMMAND ----------
 
 # DBTITLE 1,Promote to Production
+
+# Please keep in mind that if there is not a model in each of the stage this will give an error that the length of the list is not acceptable (because we are calling [0] the object)
+model_version_inProd = client.get_latest_versions(name = model_name, stages = ["Production"], )[0]
+
 if best_run_id == model_version_info.run_id:
   target_version = model_version_info.version
   client.transition_model_version_stage(

@@ -50,6 +50,9 @@ print(f"Our target is imbalanced, computing the scale is {scale}")
 # COMMAND ----------
 
 import mlflow
+from mlflow.models.signature import infer_signature
+from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
+
 experiment_path = f"/Shared/{experiment_name}"
 
 try:
@@ -159,8 +162,8 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
                            python_model=wrappedModel,
                            signature=signature, 
                            input_example=input_example,
-                           #pip_requirements = ["-r requirements.txt"],
-                           #code_path = ["model_builder.py"]
+                           #pip_requirements = ["-r requirements.txt"], # this will not take all the necessary libraries, while autolog is
+                           #code_path = ["model_builder.py"] # not clear if this is required for serving at this stage, if yes then include all the l
                           )
   
   # score

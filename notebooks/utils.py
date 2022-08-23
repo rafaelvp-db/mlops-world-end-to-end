@@ -199,5 +199,29 @@ def compute_weights(y_train):
     return scale
   
 
+# *****
+# Model Section
+# *****
 
+  
+def try_parse(str_value) -> float:
+  
+  result = str_value
+  try:
+    result = float(str_value)
+  except ValueError:
+    print(f"{str_value} can't be parsed to float, returning string...")
+  return result
+
+def calculate_metrics(target_metrics: dict, predicted, labels, stage = "train"):
+  
+  metric_results = {}
+  for key in target_metrics.keys():
+    if "accuracy" in key:
+      metric_value = target_metrics[key](labels, np.round(predicted[:,1]))
+    else:
+      metric_value = target_metrics[key](labels, predicted[:,1])
+    metric_results[f"{stage}.{key}"] = metric_value
+  
+  return metric_results
 

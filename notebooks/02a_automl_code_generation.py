@@ -46,49 +46,6 @@ df_loaded.head(5)
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC ### EDA with Bamboolib 
-
-# COMMAND ----------
-
-# STEP 1: RUN THIS CELL TO INSTALL BAMBOOLIB
-
-# You can also install bamboolib on the cluster. Just talk to your cluster admin for that
-#%pip install bamboolib # I have it installed directly on my cluster 
-
-# COMMAND ----------
-
-# STEP 2: RUN THIS CELL TO IMPORT AND USE BAMBOOLIB
-
-import bamboolib as bam
-
-# This opens a UI from which you can import your data
-bam  
-
-# Already have a pandas data frame? Just display it!
-# Here's an example
-# import pandas as pd
-# df_test = pd.DataFrame(dict(a=[1,2]))
-# df_test  # <- You will see a green button above the data set if you display it
-
-# COMMAND ----------
-
-df_loaded
-
-# COMMAND ----------
-
-import plotly.express as px
-fig = px.histogram(df_loaded, x='SeniorCitizen', color='Churn')
-fig
-
-# COMMAND ----------
-
-import plotly.express as px
-fig = px.treemap(df_loaded, path=['Churn', 'gender', 'SeniorCitizen', 'MultipleLines','Contract'])
-fig
-
-# COMMAND ----------
-
 import plotly.express as px
 fig = px.scatter(df_loaded, x='tenure', color='Churn', y='TotalCharges')
 fig.update_yaxes(type='log', tickformat='.1e')

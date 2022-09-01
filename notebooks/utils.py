@@ -80,10 +80,16 @@ def write_into_delta_table(
 
 def prepare_features(sparkDF):
     # 0/1 -> boolean
-    sparkDF = sparkDF.withColumn("SeniorCitizen", F.col("SeniorCitizen") == 1)
+    sparkDF = (sparkDF
+               .withColumn("SeniorCitizen", F.col("SeniorCitizen") == 1)
+               .withColumn("SeniorCitizen", F.col("SeniorCitizen").cast("int"))
+               .withColumn("gender", F.col("gender") == "Female")
+               .withColumn("gender", F.col("gender").cast("int"))
+              )
     # Yes/No -> boolean
     for yes_no_col in ["Partner", "Dependents", "PhoneService", "PaperlessBilling"]:
-        sparkDF = sparkDF.withColumn(yes_no_col, F.col(yes_no_col) == "Yes")
+        sparkDF = sparkDF.withColumn(yes_no_col, F.col(yes_no_col) == "Yes").withColumn(yes_no_col, F.col(yes_no_col).cast("int"))
+         
     sparkDF = sparkDF.withColumn(
         "Churn", F.when(F.col("Churn") == "Yes", 1).otherwise(0)
     )
@@ -129,7 +135,6 @@ def prepare_features(sparkDF):
             F.col("TotalCharges").cast("double")
         ),
     )
-
     return sparkDF
 
 

@@ -46,14 +46,6 @@ df_loaded.head(5)
 
 # COMMAND ----------
 
-import plotly.express as px
-fig = px.scatter(df_loaded, x='tenure', color='Churn', y='TotalCharges')
-fig.update_yaxes(type='log', tickformat='.1e')
-fig.update_xaxes(type='log', tickformat='.1e')
-fig
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ### Select supported columns
 # MAGIC Select only the columns that are supported. This allows us to train a model that can predict on a dataset that has extra columns that are not used in training.

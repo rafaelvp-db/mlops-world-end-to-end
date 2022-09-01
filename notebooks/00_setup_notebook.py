@@ -4,10 +4,6 @@ dbutils.widgets.text("min_dbr_version", "11.0", "Min required DBR version")
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 import re
 
 try:
@@ -46,16 +42,16 @@ if reset_all:
   spark.sql(f"DROP DATABASE IF EXISTS {dbName} CASCADE")
   dbutils.fs.rm(cloud_storage_path, True)
 
+
 print(f"we are using {dbName} database")
 print("Database will be in cloud_storage_path {}".format(cloud_storage_path))
 spark.sql(f"""create database if not exists {dbName} LOCATION '{cloud_storage_path}/tables' """)
 spark.sql(f"""USE {dbName}""")
 
-
-
 # COMMAND ----------
 
-print("HERE YOUR DATABASE IS ", dbName, " PLEASE COPY THIS INTO YOUR NEXT STEP")
+print("HERE YOUR DATABASE IS ", dbName, " PLEASE COPY THIS INTO YOUR NEXT STEP \n")
+print("HERE YOUR USERNAME IS ", current_user )
 
 # COMMAND ----------
 

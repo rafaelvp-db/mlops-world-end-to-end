@@ -1,8 +1,11 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC 
-# MAGIC # Telco Churn Prediction
-# MAGIC ## 1. Data Preparation
+# MAGIC # Telco Churn Prediction Data Preparation
+
+# COMMAND ----------
+
+#!pip install bamboolib
 
 # COMMAND ----------
 
@@ -19,9 +22,9 @@ db_name = dbutils.widgets.get("db_name")
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC # End-to-End MLOps demo with MLFlow and Auto ML
+# MAGIC ## End-to-End MLOps demo with MLFlow and Auto ML
 # MAGIC 
-# MAGIC ## Challenges moving ML project into production
+# MAGIC ### Challenges moving ML project into production
 # MAGIC 
 # MAGIC 
 # MAGIC Moving ML project from a standalone notebook to a production-grade data pipeline is complex and require multiple competencies. 
@@ -140,7 +143,57 @@ if reinitialize == "True":
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC #### explore data vis inside the Databricks Notebook Cell
+
+# COMMAND ----------
+
 display(telco_df_raw)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### Example with Koalas 
+# MAGIC 
+# MAGIC Because our Data Scientist team is familiar with Pandas, we'll use `koalas` to scale `pandas` code. The Pandas instructions will be converted in the spark engine under the hood and distributed at scale.
+# MAGIC 
+# MAGIC *Note: Starting from `spark 3.2`, koalas is builtin and we can get an Pandas Dataframe using `to_pandas_on_spark`.*
+
+# COMMAND ----------
+
+import pyspark.pandas as ps
+
+def compute_churn_features_koalas(data):
+  
+  # Convert to koalas
+  data = data.to_pandas_on_spark()
+  
+  # OHE
+  data = ps.get_dummies(data, 
+                        columns=['gender', 'Partner', 'Dependents',
+                                 'PhoneService', 'MultipleLines', 'InternetService',
+                                 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection',
+                                 'TechSupport', 'StreamingTV', 'StreamingMovies',
+                                 'Contract', 'PaperlessBilling', 'PaymentMethod'],dtype = 'int64')
+  
+  # Convert label to int and rename column
+  data['Churn'] = data['Churn'].map({'Yes': 1, 'No': 0})
+  data = data.astype({'Churn': 'int32'})
+  
+  # Clean up column names
+  data.columns = data.columns.str.replace(' ', '')
+  data.columns = data.columns.str.replace('(', '-')
+  data.columns = data.columns.str.replace(')', '')
+  
+  # Drop missing values
+  data = data.dropna()
+  
+  return data
+
+# COMMAND ----------
+
+trying_koalas = compute_churn_features_koalas(telco_df_raw)
+display(trying_koalas)
 
 # COMMAND ----------
 

@@ -1,9 +1,10 @@
-from asyncio.staggered import staggered_race
 import mlflow
 from mlflow.tracking import MlflowClient
 import requests
 from pyspark.dbutils import DBUtils
-from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
+from telco_churn_mlops.pipelines.data_preparation import (
+    DataPreparationPipeline
+)
 
 
 class ModelDeploymentPipeline:
@@ -25,7 +26,8 @@ class ModelDeploymentPipeline:
         self._host = host
 
     def _get_candidate(
-        self, status="FINISHED", sort_by="metrics.test.log_loss", ascending=True
+        self,
+        status="FINISHED"
     ):
 
         experiment = mlflow.get_experiment_by_name(self._experiment_path)
@@ -77,9 +79,6 @@ class ModelDeploymentPipeline:
             print("No versions to be promoted")
             return None
 
-        source_version = model_version_info.version
-        current_stage = model_version_info.current_stage
-
         if best_run_id == model_version_info.run_id:
 
             # More details about the model
@@ -111,7 +110,8 @@ class ModelDeploymentPipeline:
 
         if pred is None:
             raise ValueError(
-                f"Model generated invalid predictions. Model: {model_version_info}"
+                f"""Model generated invalid predictions.
+                Model: {model_version_info}"""
             )
 
         return True
@@ -127,13 +127,16 @@ class ModelDeploymentPipeline:
 
         if not valid_predictions:
             raise ValueError(
-                f"Predictions from {self._model_name} in {from_stage} are invalid"
+                f"""Predictions from {self._model_name}
+                in {from_stage} are invalid"""
             )
 
         if model_version_info is not None:
             if best_run_id != model_version_info.run_id:
                 raise ValueError(
-                    f"Best run ID {best_run_id} mismatch with run_id from Staging: {model_version_info.run_id}"
+                    f"""Best run ID {best_run_id} mismatch
+                    with run_id from Staging:
+                    {model_version_info.run_id}"""
                 )
 
             target_version = model_version_info.version
@@ -164,7 +167,11 @@ class ModelDeploymentPipeline:
         endpoint_path = "/mlflow/endpoints-v2/enable"
         payload = {"registered_model_name": self._model_name}
         full_url = f"{self._host}{endpoint_path}"
-        response = requests.post(url=full_url, json=payload, headers=auth_header)
+        response = requests.post(
+            url=full_url,
+            json=payload,
+            headers=auth_header
+        )
 
         if response.status_code != 200:
             raise ValueError(

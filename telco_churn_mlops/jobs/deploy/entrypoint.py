@@ -10,11 +10,11 @@ class ModelDeploymentJob(Job):
         experiment_name = self.conf["experiment_name"]
         run_name = self.conf["run_name"]
         pipeline = ModelDeploymentPipeline(
-            spark = self.spark,
-            db_name = db_name,
-            run_name = run_name,
-            model_name = model_name,
-            experiment_name = experiment_name
+            spark=self.spark,
+            db_name=db_name,
+            run_name=run_name,
+            model_name=model_name,
+            experiment_name=experiment_name,
         )
         pipeline.run()
         self.logger.info("deploy model job finished!")

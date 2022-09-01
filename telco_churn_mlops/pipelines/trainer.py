@@ -1,12 +1,4 @@
-from hyperopt import (
-    hp,
-    fmin,
-    tpe,
-    Trials,
-    SparkTrials,
-    space_eval,
-    STATUS_OK
-)
+from hyperopt import hp, fmin, tpe, Trials, SparkTrials, space_eval, STATUS_OK
 import inspect
 import os
 import glob
@@ -31,10 +23,7 @@ class ModelTrainingPipeline:
         experiment_name: str = "telco_churn_xgb",
         model_name: str = "xgboost",
         run_name: str = "XGB Final Model",
-        pip_requirements: List[str] = [
-            "scikit-learn==1.1.1",
-            "xgboost==1.5.0"
-        ],
+        pip_requirements: List[str] = ["scikit-learn==1.1.1", "xgboost==1.5.0"],
     ):
         self._db_name = db_name
         self._run_name = run_name
@@ -47,15 +36,13 @@ class ModelTrainingPipeline:
         self._set_code_path()
         self._model_builder = ModelBuilder()
         self._data_preparation_pipeline = DataPreparationPipeline(
-            spark = self._spark,
-            db_name = self._db_name
+            spark=self._spark, db_name=self._db_name
         )
 
     def _set_code_path(self):
         code_path = inspect.getfile(telco_churn_mlops)
         root_path = code_path.replace(code_path.split("/")[-1], "")
         self._code_path = root_path
-
 
     def _calculate_scale(self, decimal_places=3):
         self.scale = np.round(self._compute_weights(self.y_train), decimal_places)
@@ -112,16 +99,16 @@ class ModelTrainingPipeline:
         best_params = None
 
         mlflow.set_experiment(f"/Shared/{self._experiment_name}")
-        trials = SparkTrials(spark_session = self._spark, parallelism = parallelism)
+        trials = SparkTrials(spark_session=self._spark, parallelism=parallelism)
         if parallelism == 1:
             trials = Trials()
-        with mlflow.start_run(run_name = self._run_name) as run:
+        with mlflow.start_run(run_name=self._run_name) as run:
             best_params = fmin(
                 fn=self._train_wrapper,
                 space=self._search_space,
                 algo=tpe.suggest,
                 max_evals=max_evals,
-                trials=Trials()
+                trials=Trials(),
             )
 
         self._best_params = best_params
@@ -136,15 +123,15 @@ class ModelTrainingPipeline:
         scale = weights[1] / weights[0]
         return scale
 
-    def run(self, parallelism = 5):
+    def run(self, parallelism=5):
 
         self._get_splits()
         self._initialize_search_space()
-        self._get_best_params(parallelism = parallelism)
+        self._get_best_params(parallelism=parallelism)
         # configure params
         params = space_eval(self._search_space, self._best_params)
         # train model with optimal settings
-        with mlflow.start_run(run_name = self._run_name) as run:
+        with mlflow.start_run(run_name=self._run_name) as run:
 
             # capture run info for later use
             run_id = run.info.run_id
@@ -177,7 +164,7 @@ class ModelTrainingPipeline:
                 sk_model=xgb_model_best,
                 artifact_path="model",
                 pip_requirements=self._pip_requirements,
-                code_paths = [self._code_path]
+                code_paths=[self._code_path],
             )
 
             self.model_info = model_info
@@ -187,11 +174,13 @@ class ModelTrainingPipeline:
         self,
         filter_string: str = "status = 'FINISHED'",
         sort_by: str = "metrics.train.log_loss",
-        ascending = True
+        ascending=True,
     ):
 
         df = mlflow.search_runs(filter_string=filter_string)
-        best_run_id = df.sort_values(by=sort_by, ascending = ascending)["run_id"].values[0]
+        best_run_id = df.sort_values(by=sort_by, ascending=ascending)["run_id"].values[
+            0
+        ]
         best_run = mlflow.get_run(run_id=best_run_id)
 
         return best_run

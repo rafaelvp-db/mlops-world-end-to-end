@@ -13,7 +13,7 @@ class TrainModelJob(Job):
             training_table=self.conf["training_table"],
             testing_table=self.conf["testing_table"],
             model_name=self.conf["model_name"],
-            experiment_name=self.conf["experiment_name"]
+            experiment_name=self.conf["experiment_name"],
         )
         mlflow.set_experiment(f"/Shared/{self.conf['experiment_name']}")
         pipeline.run()

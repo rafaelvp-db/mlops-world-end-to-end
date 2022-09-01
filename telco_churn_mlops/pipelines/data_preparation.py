@@ -141,7 +141,6 @@ class DataPreparationPipeline:
 
         return sparkDF
 
-
     def write_into_delta_table(
         self,
         df,

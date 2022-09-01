@@ -1,13 +1,12 @@
-from typing import Dict
-
-import mlflow
-import numpy as np
 import pandas as pd
-from sklearn.metrics import log_loss, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
+from sklearn.preprocessing import (
+    FunctionTransformer,
+    OneHotEncoder,
+    StandardScaler
+)
 from xgboost import XGBClassifier
 
 bool_features = [
@@ -56,7 +55,10 @@ class ModelBuilder:
                 ("cast_type", FunctionTransformer(self._to_object)),
                 (
                     "imputer",
-                    SimpleImputer(missing_values=None, strategy="most_frequent"),
+                    SimpleImputer(
+                        missing_values=None,
+                        strategy="most_frequent"
+                    ),
                 ),
                 ("onehot", OneHotEncoder(handle_unknown="ignore")),
             ]
@@ -71,7 +73,9 @@ class ModelBuilder:
             ]
         )
 
-        transformers.append(("numerical", numerical_pipeline, numeric_features))
+        transformers.append(
+            ("numerical", numerical_pipeline, numeric_features)
+        )
 
         one_hot_pipeline = Pipeline(
             steps=[
@@ -93,7 +97,9 @@ class ModelBuilder:
                 (
                     "preprocessor",
                     ColumnTransformer(
-                        transformers, remainder="passthrough", sparse_threshold=0
+                        transformers,
+                        remainder="passthrough",
+                        sparse_threshold=0
                     ),
                 ),
                 ("standardizer", StandardScaler()),

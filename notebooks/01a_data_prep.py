@@ -8,7 +8,10 @@
 
 # DBTITLE 1,Declaring our input widgets
 dbutils.widgets.text("reinitialize", "True")
-dbutils.widgets.text("db_name", "telcochurndb")
+dbutils.widgets.text("db_name", "INSERT YOUR DATABASE NAME PLEASE") # insert you database into the widget
+# EXAMPLE for mine 
+# Try to keep Python and SQL widget with the same name, this helps when you sqitch around python and sql variables 
+# dbutils.widgets.text("db_name", "churn_mlops_anastasia_prokaieva")
 
 reinitialize = dbutils.widgets.get("reinitialize") # returns a str all the time, bool returns True 
 db_name = dbutils.widgets.get("db_name")
@@ -55,6 +58,10 @@ db_name = dbutils.widgets.get("db_name")
 
 # COMMAND ----------
 
+
+
+# COMMAND ----------
+
 # MAGIC %md 
 # MAGIC ### Exploring our data with Bamboolib 
 
@@ -82,11 +89,7 @@ bam
 
 # COMMAND ----------
 
-
 telco_df_raw = pd.read_csv("https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv", sep =',', header=0)
-
-# COMMAND ----------
-
 telco_df_raw
 
 # COMMAND ----------
@@ -98,16 +101,20 @@ fig
 # COMMAND ----------
 
 import plotly.express as px
-fig = px.treemap(telco_df_raw, path=['Churn', 'gender', 'SeniorCitizen', 'MultipleLines','Contract'])
+fig = px.box(telco_df_raw, x='MonthlyCharges', y='MultipleLines', facet_row='SeniorCitizen', color='Churn')
 fig
 
 # COMMAND ----------
 
-
+import plotly.express as px
+fig = px.density_heatmap(telco_df_raw, x='Churn', y='MonthlyCharges', facet_row='SeniorCitizen', facet_col='MultipleLines')
+fig
 
 # COMMAND ----------
 
-
+import plotly.express as px
+fig = px.treemap(telco_df_raw, path=['Churn', 'gender', 'SeniorCitizen', 'MultipleLines','Contract'])
+fig
 
 # COMMAND ----------
 
@@ -116,11 +123,8 @@ fig
 
 # COMMAND ----------
 
-# DBTITLE 1,Importing our library
 from utils import *
-
-# COMMAND ----------
-
+telco_df_raw = pd.read_csv("https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv", sep =',', header=0)
 telco_df_raw = spark.createDataFrame(telco_df_raw)
 df_train, df_test = stratified_split_train_test(
 df = telco_df_raw,
@@ -128,9 +132,15 @@ label="Churn",
 join_on="customerID",
 )
 
-write_into_delta_table(df_train, f"{db_name}.training")
-write_into_delta_table(df_test, f"{db_name}.testing")
+if reinitialize == "True":
+  write_into_delta_table(df_train, f"{db_name}.full_set")
+  write_into_delta_table(df_train, f"{db_name}.training")
+  write_into_delta_table(df_test, f"{db_name}.testing")
 
+
+# COMMAND ----------
+
+display(telco_df_raw)
 
 # COMMAND ----------
 

@@ -28,7 +28,7 @@ lint:
 clean:
 	rm -rf spark-warehouse
 
-unit: env clean
+unit: clean
 	export MLFLOW_TRACKING_URI="sqlite:///mlruns.db" && \
 	pytest --cov-report term --cov=telco_churn_mlops tests/unit
 

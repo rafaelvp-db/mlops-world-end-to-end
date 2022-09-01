@@ -1,16 +1,26 @@
-from hyperopt import hp, fmin, tpe, Trials, SparkTrials, space_eval, STATUS_OK
+from hyperopt import (
+    hp,
+    fmin,
+    tpe,
+    Trials,
+    SparkTrials,
+    space_eval
+)
 import inspect
-import os
-import glob
 import mlflow
-from mlflow.models.signature import infer_signature
 import numpy as np
-from sklearn.metrics import log_loss, accuracy_score, average_precision_score
+from sklearn.metrics import (
+    log_loss,
+    accuracy_score,
+    average_precision_score
+)
 from sklearn.utils.class_weight import compute_class_weight
 import telco_churn_mlops
 from telco_churn_mlops.pipelines.model_builder import ModelBuilder
 from typing import List
-from telco_churn_mlops.pipelines.data_preparation import DataPreparationPipeline
+from telco_churn_mlops.pipelines.data_preparation import (
+    DataPreparationPipeline
+)
 
 
 class ModelTrainingPipeline:
@@ -23,7 +33,10 @@ class ModelTrainingPipeline:
         experiment_name: str = "telco_churn_xgb",
         model_name: str = "xgboost",
         run_name: str = "XGB Final Model",
-        pip_requirements: List[str] = ["scikit-learn==1.1.1", "xgboost==1.5.0"],
+        pip_requirements: List[str] = [
+            "scikit-learn==1.1.1",
+            "xgboost==1.5.0"
+        ],
     ):
         self._db_name = db_name
         self._run_name = run_name
@@ -45,7 +58,10 @@ class ModelTrainingPipeline:
         self._code_path = root_path
 
     def _calculate_scale(self, decimal_places=3):
-        self.scale = np.round(self._compute_weights(self.y_train), decimal_places)
+        self.scale = np.round(
+            self._compute_weights(self.y_train),
+            decimal_places
+        )
 
     def _get_splits(self):
 
@@ -60,13 +76,15 @@ class ModelTrainingPipeline:
     def _train_wrapper(self, params):
         model = self._model_builder.build_pipeline(params)
         model.fit(self.X_train, self.y_train)
-        # model = self._model_builder.train_model(params, self.X_train, self.y_train)
         prob = model.predict_proba(self.X_train)
         loss = log_loss(self.y_train, prob[:, 1])
         mlflow.log_metrics(
             {
                 "train.log_loss": loss,
-                "train.accuracy": accuracy_score(self.y_train, np.round(prob[:, 1])),
+                "train.accuracy": accuracy_score(
+                    self.y_train,
+                    np.round(prob[:, 1])
+                ),
             }
         )
         return loss
@@ -76,7 +94,11 @@ class ModelTrainingPipeline:
         self._calculate_scale()
         self._search_space = {
             "max_depth": hp.quniform("max_depth", 5, 30, 1),
-            "learning_rate": hp.loguniform("learning_rate", np.log(0.01), np.log(0.10)),
+            "learning_rate": hp.loguniform(
+                "learning_rate",
+                np.log(0.01),
+                np.log(0.10)
+            ),
             "gamma": hp.quniform("gamma", 0.0, 1.0, 0.001),
             "min_child_weight": hp.quniform("min_child_weight", 4, 25, 1),
             "subsample": hp.loguniform("subsample", np.log(0.1), np.log(1.0)),
@@ -99,16 +121,19 @@ class ModelTrainingPipeline:
         best_params = None
 
         mlflow.set_experiment(f"/Shared/{self._experiment_name}")
-        trials = SparkTrials(spark_session=self._spark, parallelism=parallelism)
+        trials = SparkTrials(
+            spark_session=self._spark,
+            parallelism=parallelism
+        )
         if parallelism == 1:
             trials = Trials()
-        with mlflow.start_run(run_name=self._run_name) as run:
+        with mlflow.start_run(run_name=self._run_name):
             best_params = fmin(
                 fn=self._train_wrapper,
                 space=self._search_space,
                 algo=tpe.suggest,
                 max_evals=max_evals,
-                trials=Trials(),
+                trials=trials,
             )
 
         self._best_params = best_params
@@ -131,13 +156,12 @@ class ModelTrainingPipeline:
         # configure params
         params = space_eval(self._search_space, self._best_params)
         # train model with optimal settings
-        with mlflow.start_run(run_name=self._run_name) as run:
-
-            # capture run info for later use
-            run_id = run.info.run_id
+        with mlflow.start_run(run_name=self._run_name):
 
             # preprocess features and train
-            xgb_model_best = self._model_builder.build_pipeline(self._best_params)
+            xgb_model_best = self._model_builder.build_pipeline(
+                self._best_params
+            )
             xgb_model_best.fit(self.X_train, self.y_train)
             # predict
             pred_train = xgb_model_best.predict_proba(self.X_train)
@@ -178,9 +202,10 @@ class ModelTrainingPipeline:
     ):
 
         df = mlflow.search_runs(filter_string=filter_string)
-        best_run_id = df.sort_values(by=sort_by, ascending=ascending)["run_id"].values[
-            0
-        ]
+        best_run_id = df.sort_values(
+            by=sort_by,
+            ascending=ascending
+        )["run_id"].values[0]
         best_run = mlflow.get_run(run_id=best_run_id)
 
         return best_run
@@ -192,7 +217,10 @@ class ModelTrainingPipeline:
         metric_results = {}
         for key in target_metrics.keys():
             if "accuracy" in key:
-                metric_value = target_metrics[key](labels, np.round(predicted[:, 1]))
+                metric_value = target_metrics[key](
+                    labels,
+                    np.round(predicted[:, 1])
+                )
             else:
                 metric_value = target_metrics[key](labels, predicted[:, 1])
             metric_results[f"{stage}.{key}"] = metric_value

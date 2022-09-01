@@ -12,7 +12,14 @@ class DataPreparationPipeline:
         self.spark = spark
         self.db_name = db_name
 
-    def stratified_split_train_test(self, df, label, join_on, seed=42, frac=0.1):
+    def stratified_split_train_test(
+        self,
+        df,
+        label,
+        join_on,
+        seed=42,
+        frac=0.1
+    ):
         """
         Stratfied split of a Spark DataDrame into a Train and Test sets
         """
@@ -28,7 +35,9 @@ class DataPreparationPipeline:
 
     def export_df(self, table_name):
 
-        telco_df = self.spark.read.format("delta").table(f"{self.db_name}.{table_name}")
+        telco_df = self.spark.read.format("delta").table(
+            f"{self.db_name}.{table_name}"
+        )
 
         telco_df = self.prepare_features(telco_df)
         telco_df = self.compute_service_features(telco_df)
@@ -41,10 +50,21 @@ class DataPreparationPipeline:
 
     def prepare_features(self, sparkDF):
         # 0/1 -> boolean
-        sparkDF = sparkDF.withColumn("SeniorCitizen", F.col("SeniorCitizen") == 1)
+        sparkDF = sparkDF.withColumn(
+            "SeniorCitizen",
+            F.col("SeniorCitizen") == 1
+        )
         # Yes/No -> boolean
-        for yes_no_col in ["Partner", "Dependents", "PhoneService", "PaperlessBilling"]:
-            sparkDF = sparkDF.withColumn(yes_no_col, F.col(yes_no_col) == "Yes")
+        for yes_no_col in [
+            "Partner",
+            "Dependents",
+            "PhoneService",
+            "PaperlessBilling"
+        ]:
+            sparkDF = sparkDF.withColumn(
+                yes_no_col,
+                F.col(yes_no_col) == "Yes"
+            )
         sparkDF = sparkDF.withColumn(
             "Churn", F.when(F.col("Churn") == "Yes", 1).otherwise(0)
         )
@@ -86,7 +106,12 @@ class DataPreparationPipeline:
         # Empty TotalCharges -> NaN
         sparkDF = sparkDF.withColumn(
             "TotalCharges",
-            F.when(F.length(F.trim(F.col("TotalCharges"))) == 0, None).otherwise(
+            F.when(
+                F.length(
+                    F.trim(F.col("TotalCharges"))
+                ) == 0,
+                None
+            ).otherwise(
                 F.col("TotalCharges").cast("double")
             ),
         )
@@ -102,7 +127,6 @@ class DataPreparationPipeline:
         def num_no_services(*cols):
             return sum(map(lambda s: (s == -1).astype("int"), cols))
 
-        # Below also add AvgPriceIncrease: current monthly charges compared to historical average
         sparkDF = (
             sparkDF.fillna({"TotalCharges": 0.0})
             .withColumn(
@@ -152,7 +176,6 @@ class DataPreparationPipeline:
     ):
         if table_type == "managed":
 
-            table = f"{db_name}.{table_name}"
             self.spark.sql(f"CREATE DATABASE IF NOT EXISTS {db_name}")
             self.spark.sql(f"DROP TABLE IF EXISTS {db_name}.{table_name}")
             df.write.saveAsTable(f"{db_name}.{table_name}")
@@ -174,7 +197,8 @@ class DataPreparationPipeline:
         join_on: str = "customerID",
     ):
 
-        telco_df_raw = self.spark.read.option("header", True).csv(input_data_path)
+        telco_df_raw = self.spark.read.option("header", True)\
+            .csv(input_data_path)
         df_train, df_test = self.stratified_split_train_test(
             df=telco_df_raw,
             label=label,

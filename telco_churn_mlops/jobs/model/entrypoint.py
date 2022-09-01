@@ -4,6 +4,7 @@ from telco_churn_mlops.pipelines.trainer import ModelTrainingPipeline
 
 
 class TrainModelJob(Job):
+
     def launch(self):
         self.logger.info("Launching model training job")
 
@@ -16,7 +17,7 @@ class TrainModelJob(Job):
             experiment_name=self.conf["experiment_name"],
         )
         mlflow.set_experiment(f"/Shared/{self.conf['experiment_name']}")
-        pipeline.run()
+        pipeline.run(parallelism = self.conf["parallelism"])
 
         self.logger.info("training job finished!")
 

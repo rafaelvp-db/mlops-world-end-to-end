@@ -17,7 +17,7 @@ class TrainModelJob(Job):
             experiment_name=self.conf["experiment_name"],
         )
         mlflow.set_experiment(f"/Shared/{self.conf['experiment_name']}")
-        pipeline.run(parallelism = self.conf["parallelism"])
+        pipeline.run(parallelism=self.conf["parallelism"])
 
         self.logger.info("training job finished!")
 

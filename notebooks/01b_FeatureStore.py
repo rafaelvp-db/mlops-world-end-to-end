@@ -14,8 +14,11 @@ db_name = dbutils.widgets.get("db_name")
 
 # COMMAND ----------
 
-from databricks import feature_store
+# importing all of our prepared scripts
 from utils import *
+
+from databricks import feature_store
+# Instantiate the feature store client
 fs = feature_store.FeatureStoreClient()
 
 # COMMAND ----------
@@ -25,12 +28,19 @@ fs = feature_store.FeatureStoreClient()
 
 # COMMAND ----------
 
-fs.register_table(delta_table=f"{db_name}.full_set", primary_keys="customerID",
-                  description=""" Raw Feature Table with minor preparation but cleaned, for future teams to work on and share it on churn dataset""",
-                  tags={"useCase":"churn",
-                        "team":"ds"
-                       }
-                 )
+try:
+  fs.register_table(delta_table=f"{db_name}.full_set",
+                    primary_keys="customerID",
+                    description=""" 
+                                Raw Feature Table with minor preparation but cleaned,
+                                for future teams to work on and share it on churn dataset
+                                """,
+                    tags={"useCase":"churn",
+                          "team":"ds"
+                         }
+                   )
+except:
+  print("Something went wrong, please check that your table exists")
 
 # COMMAND ----------
 
@@ -63,14 +73,22 @@ display(telco_df_feat)
 
 # COMMAND ----------
 
-# Create the feature store based on df schema and write df to it
-features_table = fs.create_table(
-  name=f'{db_name}.telco_churn_features_ap',
-  primary_keys=['customerID'],
-  df=telco_df_feat, # you can create a table and write data into it later, keep in mind once created you should write into not recreate a table 
-  description='Telco churn features preprocessed table, keep in mind a few categorical features were left asside only simple feature mapping was created. This set is ready to be consumed by the most of the models including AutoMl of Databricks.',
-  tags={"useCase":"churn","team":"ds"}
-)
+try:  
+  # Create the feature store based on df schema and write df to it
+  features_table = fs.create_table(
+    name=f'{db_name}.telco_churn_features_ap',
+    primary_keys=['customerID'],
+    df=telco_df_feat, # you can create a table and write data into it later, keep in mind once created you should write into not recreate a table 
+    description="""
+                Telco churn features preprocessed table, keep in mind
+                a few categorical features were left asside only simple
+                feature mapping was created. This set is ready to be 
+                consumed by the most of the models including AutoMl 
+                of Databricks.""",
+    tags={"useCase":"churn","team":"ds"}
+  )
+except:
+  print("Something went wrong, please check that your data exists")
 
 # COMMAND ----------
 
@@ -136,11 +154,9 @@ features_table = fs.create_table(
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
-
+# Drop feature table if it exists
+# fs.drop_table(name=f'{dbName}.telco_churn_features'),
+help(fs.drop_table)
 
 # COMMAND ----------
 
@@ -173,6 +189,66 @@ features_table = fs.create_table(
 # MAGIC Click on Start, and Databricks will do the rest.
 # MAGIC 
 # MAGIC While this is done using the UI, you can also leverage the [python API](https://docs.databricks.com/applications/machine-learning/automl.html#automl-python-api-1)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### Using the generated notebook to build our model
+# MAGIC 
+# MAGIC Next step: [Explore the generated Auto-ML notebook]($./02a_automl_code_generation)
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+# MAGIC %md ## (Optional) Online Feature Store 
+# MAGIC 
+# MAGIC Example code how to publish your offline feature store online. 
+# MAGIC Please consult our [the official documentation](https://docs.microsoft.com/en-us/azure/databricks/applications/machine-learning/feature-store/feature-tables#publish-features-to-an-online-feature-store) for the recent updates regarding the connection to the external SQL databases. 
+# MAGIC 
+# MAGIC ```
+# MAGIC # 
+# MAGIC # Step 1 Create database with the same name in the online store (Azure MySQL here)
+# MAGIC # 
+# MAGIC scope = "online_fs"
+# MAGIC user = dbutils.secrets.get(scope, "ofs-user")
+# MAGIC password = dbutils.secrets.get(scope, "ofs-password")
+# MAGIC import mysql.connector
+# MAGIC import pandas as pd
+# MAGIC cnx = mysql.connector.connect(user=user,
+# MAGIC                               password=password,
+# MAGIC                               host=<hostname>)
+# MAGIC cursor = cnx.cursor()
+# MAGIC cursor.execute(f"CREATE DATABASE IF NOT EXISTS {dbName};")
+# MAGIC 
+# MAGIC #
+# MAGIC # Step 2 Publish your data online
+# MAGIC #
+# MAGIC import datetime
+# MAGIC from databricks.feature_store.online_store_spec import AzureMySqlSpec
+# MAGIC  
+# MAGIC online_store = AzureMySqlSpec(
+# MAGIC   hostname=<hostname>,
+# MAGIC   port=3306,
+# MAGIC   read_secret_prefix='online_fs/ofs',
+# MAGIC   write_secret_prefix='online_fs/ofs'
+# MAGIC )
+# MAGIC  
+# MAGIC fs.publish_table(
+# MAGIC   name=f'{dbName}.demographic_features',
+# MAGIC   online_store=online_store,
+# MAGIC   mode='overwrite'
+# MAGIC )
+# MAGIC  
+# MAGIC fs.publish_table(
+# MAGIC   name=f'{dbName}.service_features',
+# MAGIC   online_store=online_store,
+# MAGIC   mode='overwrite'
+# MAGIC )
+# MAGIC 
+# MAGIC ```
 
 # COMMAND ----------
 

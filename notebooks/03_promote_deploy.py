@@ -7,19 +7,40 @@
 dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("run_name", "XGB Final Model")
 dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
+dbutils.widgets.text("user_name", "PLACE IT HERE")
 dbutils.widgets.text("model_name", "telco_churn_model")
 
 run_name = dbutils.widgets.get("run_name")
 db_name = dbutils.widgets.get("db_name")
 experiment_name = dbutils.widgets.get("experiment_name")
 model_name = dbutils.widgets.get("model_name")
+user_name = dbutils.widgets.get("user_name")
+
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC You can access experiments and query them with Spark by executing the following command
+# MAGIC 
+# MAGIC ```
+# MAGIC display(spark.read.format("mlflow-experiment").load("3451728416871358").limit(3))
+# MAGIC ```
 
 # COMMAND ----------
 
 import mlflow
+archive_old_model = False
 
-experiment_path = f"/Shared/{experiment_name}"
-experiment = mlflow.get_experiment_by_name(experiment_path)
+# here it depends if you modified your location where you store your artifact or not 
+try:
+  print(f"Your experiment will be placed under /Shared/{experiment_name}")
+  experiment_path = f"/Shared/{experiment_name}"
+  experiment = mlflow.get_experiment_by_name(experiment_path)
+except:
+  # if you used automl and kep MlFlow Artifact directory 
+  # then you should follow this path 
+  # /Users/user_name/databricks_automl/your_experiment_name 
+  experiment_path = f"/Users/{user_name}/databricks_automl/{experiment_name}"
 
 df = mlflow.search_runs(
   experiment_ids = [experiment.experiment_id],
@@ -35,7 +56,7 @@ best_run_id
 from mlflow.tracking import MlflowClient
 client = MlflowClient()
 
-client.set_tag(best_run_id, key='demographic_vars', value='seniorCitizen,gender_Female')
+client.set_tag(best_run_id, key='demographic_vars', value='seniorCitizen, gender_Female')
 client.set_tag(best_run_id, key='db_table', value=f'{db_name}.training')
 
 # COMMAND ----------
@@ -48,9 +69,12 @@ model_desc_str = """ This model predicts whether a customer will churn.
 It is used to update the Telco Churn Dashboard in DB SQL."""
 model_version_desc = """This model version was built using XGBoost, with the best hyperparameters set identified with HyperOpt."""
 
+print("Our target for the model is Staging")
 try: 
   # Please keep in mind that if there is not a model in each of the stage this will give an error that the length of the list is not acceptable (because we are calling [0] the object)
-  model_version_latest = client.get_latest_versions(name = model_name, stages = ["None"])[0]
+  model_version_latest = client.get_latest_versions(name = model_name, stages = ["None"])[-1]
+  print(f"Your latest model version in stage None is {model_version_latest.version}")
+  print("")
   if best_run_id == model_version_latest.run_id:
     model_version_info = model_version_latest
     target_version = model_version_info.version
@@ -77,20 +101,18 @@ try:
     )
 
     print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
+  else:
+    print("It seems that your best model is not in None Staging")
 except:
   print( "There is not a model in a staging None, your best model was already transferred into a new Stage")
   
 
 # COMMAND ----------
 
-target_stage
-
-# COMMAND ----------
-
-# DBTITLE 1,Test Predictions
+# DBTITLE 1,Test Predictions and Promote Target Stage into Production
 try:  
   # Please keep in mind that if there is not a model in each of the stage this will give an error that the length of the list is not acceptable (because we are calling [0] the object)
-  model_version_inStage = client.get_latest_versions(name = model_name, stages = ["Staging"], )[0]
+  model_version_inStage = client.get_latest_versions(name = model_name, stages = ["Staging"], )[-1]
   if best_run_id == model_version_inStage.run_id: 
     model_version_info = model_version_inStage
     target_version = model_version_info.version
@@ -98,44 +120,41 @@ try:
     from utils import export_df
 
     current_stage = target_stage
-    model_version_info = client.get_latest_versions(name = model_name, stages = [current_stage])[0]
+    model_version_info = client.get_latest_versions(name = model_name, stages = [current_stage])[-1]
 
     print("Loading our model to test predictions")
-    model = mlflow.sklearn.load_model(model_uri = model_version_info.source)
+    model = mlflow.pyfunc.load_model(model_uri = model_version_info.source)
     X_test, y_test = export_df(f"{db_name}.testing")
     pred = model.predict(X_test.sample(10))
     
     if pred is not None:
-      print("Predictions OK")
-      target_version = None
+      print("Predictions are OK")
+      print(f"Moving target_stage to the Production, your model_version is {target_version}")
       target_stage = "Production"
+    else:
+      target_stage = "Production"
+      print("You may need to go back an verify your model")
     
 except:
+  
   print("There is not model in a Staging")
 
 
 
 # COMMAND ----------
 
-target_stage
-
-# COMMAND ----------
-
-# DBTITLE 1,Promote to Production
-
-# Please keep in mind that if there is not a model in each of the stage this will give an error that the length of the list is not acceptable (because we are calling [0] the object)
-model_version_inProd = client.get_latest_versions(name = model_name, stages = ["Production"], )[0]
-
-if best_run_id == model_version_info.run_id:
-  target_version = model_version_info.version
-  client.transition_model_version_stage(
-    name = model_name,
-    version = target_version,
-    stage = target_stage,
-    archive_existing_versions = True
-  )
-  
-print(f"Transitioned version {target_version} of model {model_name} to {target_stage}")
+# DBTITLE 1,Transitioning into Production
+if target_stage == "Production":
+  try:
+    client.transition_model_version_stage(
+      name = model_name,
+      version = target_version,
+      stage = target_stage,
+      archive_existing_versions=False
+    )
+    print(f"Moving model version {target_version} of model {model_name} to {target_stage}")
+  except:
+    print(f"Please check that your model {model_name} passed necessary test before transitiining it into Production \nOR if it's not been transtioned into Production already ")
 
 # COMMAND ----------
 
@@ -182,30 +201,9 @@ while not endpoint_enabled:
 
 # COMMAND ----------
 
-# DBTITLE 1,Check Endpoint Version Status
-version_endpoint_enabled = False
-attempt_number = 1
 
-max_attempts = 1000
-
-while not version_endpoint_enabled:
-  print(f"Checking if Endpoint for Version {target_version} was enabled, attempt {attempt_number}...")
-  endpoint_path = "/mlflow/endpoints-v2/get-version-status"
-  full_url = f"{host}{endpoint_path}"
-  payload["endpoint_version_name"] = target_version
-  response = requests.get(url = full_url, json = payload, headers = auth_header)
-  json_response = json.loads(response.text)
-  status = json_response["endpoint_status"]["service_status"]["state"]
-  message = json_response["endpoint_status"]["service_status"]["message"]
-  print(f"Current endpoint status: {status}, message: {message}")
-  attempt_number += 1
-  if attempt_number >= max_attempts:
-    raise ValueError(f"Max attempts reached, last status: {status}")
-  if status != "SERVICE_STATE_PENDING":
-    print(f"*** Status: {status}, exiting... ***")
-    break
-  time.sleep(10)
 
 # COMMAND ----------
 
-
+# MAGIC %md-sandbox
+# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/><br/><a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>

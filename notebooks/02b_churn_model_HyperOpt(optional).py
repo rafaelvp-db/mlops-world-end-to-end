@@ -1,9 +1,4 @@
 # Databricks notebook source
-# !pip install scikit-learn==1.1.1 # install it on the cluster directly, would prefer to pass the init script rather then doing this 
-# !pip install xgboost==1.5.0
-
-# COMMAND ----------
-
 dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("run_name", "XGB Final Model")
 dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
@@ -32,27 +27,19 @@ retrain = dbutils.widgets.get("retrain")
 
 # COMMAND ----------
 
-from utils import export_df, compute_weights
-from model_builder import *
+from utils import *
+import mlflow
+from mlflow.models.signature import infer_signature
+from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
 
 # reading back the Delta table and calling a data4train -> can be a class then
-print("Preparing X and y")
+print(f"Preparing X and y \n using {db_name} database")
 X_train, y_train = export_df(f"{db_name}.training")
 X_test, y_test = export_df(f"{db_name}.testing")
 scale = np.round(compute_weights(y_train), 3) # scale can be places also inside the parameters then 
 print(f"Our target is imbalanced, computing the scale is {scale}")
 
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC ## Model
-
-# COMMAND ----------
-
-import mlflow
-from mlflow.models.signature import infer_signature
-from hyperopt import hp, fmin, tpe, SparkTrials, space_eval, STATUS_OK
-
+# Setting our experiment to kep track of our model with MlFlow 
 experiment_path = f"/Shared/{experiment_name}"
 
 try:
@@ -61,18 +48,23 @@ try:
   experiment = mlflow.get_experiment_by_name(experiment_path)
 except:
   print("Creating a new experiment and setting it")
-  experiment = mlflow.create_experiment(name = experiment_path) # ?does this set it by default?
+  experiment = mlflow.create_experiment(name = experiment_path)
   mlflow.set_experiment(experiment_path)
-  
+ 
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ### HyperParameter Tuning 
+# MAGIC ## Modelling 
 
 # COMMAND ----------
 
-if RETRAIN:
+# MAGIC %md 
+# MAGIC ### HyperParameter Tuning for XgBoost
+
+# COMMAND ----------
+
+if retrain == "True":
   # define hyperopt search space
   search_space = {
       'max_depth' : hp.quniform('max_depth', 5, 30, 1)                                  # depth of trees (preference is for shallow trees or even stumps (max_depth=1))
@@ -111,27 +103,39 @@ if RETRAIN:
 
 # MAGIC %md
 # MAGIC 
-# MAGIC ## Finding the experiment with the best metrics
+# MAGIC ### Finding the experiment with the best metrics
 
 # COMMAND ----------
 
-df = mlflow.search_runs(filter_string="status = 'FINISHED'")
-best_run_id = df.sort_values("metrics.train.log_loss", ascending = True)["run_id"].values[0]
-params_dict = mlflow.get_run(run_id = best_run_id).data.params
-parsed_params = dict([(item[0], try_parse(item[1])) for item in params_dict.items()])
-print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
+try:
+  runs_df = mlflow.search_runs(filter_string="status = 'FINISHED'")
+  best_run_id = runs_df.sort_values("metrics.train.log_loss", ascending = True)["run_id"].values[0]
+  params_dict = mlflow.get_run(run_id = best_run_id).data.params
+  parsed_params = dict([(item[0], try_parse(item[1])) for item in params_dict.items()])
+  print(f"Best Run ID is {best_run_id}, params: \n {parsed_params}")
+except:
+  print("You have no runs yet, please run your model first")
 
 # COMMAND ----------
 
-# configure params
-#params = space_eval(search_space, parsed_params)
+# MAGIC %md 
+# MAGIC #### Loggin model with a SkLearn flavor 
 
-class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
-  def __init__(self, model):
-    self.model = model
-    
-  def predict(self, context, model_input):
-    return self.model.predict(model_input)
+# COMMAND ----------
+
+import class_builder
+from class_builder import ModelBuilder
+import inspect
+
+def _set_code_path():
+    code_path = inspect.getfile(class_builder)
+    root_path = code_path.replace(code_path.split("/")[-1], "")
+    return root_path
+  
+code_path = _set_code_path()
+print("Your code path is {code_path}")
+# Set our Model Class 
+model_builder = ModelBuilder()
 
 target_metrics = {
   "average_precision_score": average_precision_score,
@@ -140,9 +144,9 @@ target_metrics = {
 }
 # train model with optimal settings 
 with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_name) as run:
-  
+
   # preprocess features and train
-  model = build_pipeline(parsed_params)
+  model = model_builder.build_pipeline(parsed_params)
   model.fit(X_train, y_train)
   # predict
   pred_train = model.predict_proba(X_train)
@@ -157,15 +161,14 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   signature = infer_signature(X_train, model.predict(X_train))
   input_example = X_train.iloc[:5,:]
   
-  wrappedModel = SklearnModelWrapper(model)
-  mlflow.pyfunc.log_model( artifact_path=artifact_name,
-                           python_model=wrappedModel,
+  #wrappedModel = SklearnModelWrapper(model)
+  mlflow.sklearn.log_model(artifact_path=artifact_name,
+                           sk_model=model,
                            signature=signature, 
                            input_example=input_example,
-                           #pip_requirements = ["-r requirements.txt"], # this will not take all the necessary libraries, while autolog is
-                           #code_path = ["model_builder.py"] # not clear if this is required for serving at this stage, if yes then include all the l
+                           pip_requirements = ["-r requirements.txt"],
+                           code_paths = ["./class_builder.py"] #[code_path+"class_builder.py"]
                           )
-  
   # score
   train_metrics = calculate_metrics(target_metrics, pred_train, y_train, "train")
   pred_test = model.predict_proba(X_test)
@@ -188,4 +191,81 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
 
 # COMMAND ----------
 
+# MAGIC %md 
+# MAGIC ### Logging model as a pyfunc wrapper 
 
+# COMMAND ----------
+
+import class_builder
+from class_builder import ModelBuilder
+import inspect
+
+def _set_code_path():
+    code_path = inspect.getfile(class_builder)
+    root_path = code_path.replace(code_path.split("/")[-1], "")
+    return root_path
+  
+code_path = _set_code_path()
+print(f"Your code path is {code_path}")
+# Set our Model Class 
+model_builder = ModelBuilder()
+
+target_metrics = {
+  "average_precision_score": average_precision_score,
+  "accuracy_score": accuracy_score,
+  "log_loss": log_loss
+}
+
+class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
+  def __init__(self, model):
+    self.model = model
+  def predict(self, context, model_input):
+    return self.model.predict(model_input)
+  
+# train model with optimal settings 
+with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_name) as run:
+
+  # preprocess features and train
+  model = model_builder.build_pipeline(parsed_params)
+  model.fit(X_train, y_train)
+  # predict
+  pred_train = model.predict_proba(X_train)
+  
+  # ******
+  # MlFlow Part Start 
+  # ******
+  
+  # capture run info for later use
+  run_id = run.info.run_id
+  
+  signature = infer_signature(X_train, model.predict(X_train))
+  input_example = X_train.iloc[:5,:]
+  
+  wrappedModel = SklearnModelWrapper(model)
+  mlflow.pyfunc.log_model(artifact_path=artifact_name,
+                           python_model=wrappedModel,
+                           signature=signature, 
+                           input_example=input_example,
+                           pip_requirements = ["-r requirements.txt"],
+                           code_path = ["./class_builder.py"] #[code_path+"class_builder.py"]
+                          )
+  # score
+  train_metrics = calculate_metrics(target_metrics, pred_train, y_train, "train")
+  pred_test = model.predict_proba(X_test)
+  test_metrics = calculate_metrics(target_metrics, pred_test, y_test, "test")
+  
+  mlflow.log_metrics(train_metrics)
+  mlflow.log_metrics(test_metrics)
+  mlflow.log_params(parsed_params)
+  mlflow.set_tag("best_model", "true")
+
+  print('Xgboost Trained with XGBClassifier')
+  version_info = mlflow.register_model(model_uri = f"runs:/{run_id}/{artifact_name}", name = model_name)
+  print(f"Model logged under run_id: {run_id}")
+  print(f"Train metrics: {train_metrics}")
+  print(f"Test metrics: {test_metrics}")
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC &copy; 2022 Databricks, Inc. All rights reserved.<br/>Apache, Apache Spark, Spark and the Spark logo are trademarks of the <a href="http://www.apache.org/">Apache Software Foundation</a>.<br/><br/><a href="https://databricks.com/privacy-policy">Privacy Policy</a> | <a href="https://databricks.com/terms-of-use">Terms of Use</a> | <a href="http://help.databricks.com/">Support</a>

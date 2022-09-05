@@ -1,9 +1,4 @@
 # Databricks notebook source
-# !pip install scikit-learn==1.1.1
-# !pip install xgboost==1.5.0
-
-# COMMAND ----------
-
 dbutils.widgets.text("db_name", "telcochurndb")
 dbutils.widgets.text("run_name", "XGB Final Model")
 dbutils.widgets.text("experiment_name", "telco_churn_mlops_experiment")
@@ -58,6 +53,26 @@ client = MlflowClient()
 
 client.set_tag(best_run_id, key='demographic_vars', value='seniorCitizen, gender_Female')
 client.set_tag(best_run_id, key='db_table', value=f'{db_name}.training')
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC #### Request Transition to Staging
+# MAGIC 
+# MAGIC <img style="float: right" src="https://github.com/QuentinAmbard/databricks-demo/raw/main/retail/resources/images/churn_move_to_stating.gif">
+# MAGIC 
+# MAGIC Our model is now read! Let's request a transition to Staging. 
+# MAGIC 
+# MAGIC While this example is done using the API, we can also simply click on the Model Registry button.
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC **NOTES**
+# MAGIC 
+# MAGIC Please keep in mind that often you will not have rights not transition your models directly into stages - then. you would need to request a transition into a new Stage. 
+# MAGIC The best practice is to setup an automatic Webhook as soon as your model version was requested to be moved into Staging / Production. <br>
+# MAGIC THe webhooks example coming soon. 
 
 # COMMAND ----------
 
@@ -164,7 +179,8 @@ import requests
 token = dbutils.notebook.entry_point.getDbutils().notebook().getContext().apiToken().get()
 auth_header = {"Authorization" : "Bearer " + token}
 
-endpoint_path = "/mlflow/endpoints-v2/enable"
+# enabeling the Serving with API for v2
+endpoint_path = "/mlflow/endpoints-v2/enable" 
 payload = {
   "registered_model_name": model_name
 }

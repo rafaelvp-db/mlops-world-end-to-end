@@ -20,7 +20,7 @@ retrain = dbutils.widgets.get("retrain")
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ## 2. Data Prep
+# MAGIC ## Data Init
 # MAGIC 
 # MAGIC Calling split function for Train and Test, the preprocessing part is only for the Train, our test will be kept for the final inference 
 # MAGIC Saving everything into Delta before running the model 
@@ -61,6 +61,14 @@ except:
 
 # MAGIC %md 
 # MAGIC ### HyperParameter Tuning for XgBoost
+# MAGIC 
+# MAGIC We are using HyperOpt here. 
+# MAGIC For more information check here: 
+# MAGIC - https://docs.databricks.com/applications/machine-learning/automl-hyperparam-tuning/hyperopt-best-practices.html
+# MAGIC - https://docs.databricks.com/applications/machine-learning/automl-hyperparam-tuning/hyperopt-spark-mlflow-integration.html
+# MAGIC - https://www.databricks.com/blog/2021/04/15/how-not-to-tune-your-model-with-hyperopt.html
+# MAGIC 
+# MAGIC Please keep in mind that HyperOpt often used with `SparkTrials`, to distribute independent models. Meanwhile, if you are using `SparkML` or anything that involved Spark Executors, HyperOpt should use `Trials()` instead. 
 
 # COMMAND ----------
 
@@ -119,14 +127,20 @@ except:
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC #### Loggin model with a SkLearn flavor 
+# MAGIC ## Registering the best model
 
 # COMMAND ----------
 
-import class_builder
-from class_builder import ModelBuilder
+# MAGIC %md 
+# MAGIC ### Loggin model with a SkLearn flavor 
+
+# COMMAND ----------
+
+import class_builder # import your package (here we import only single script)
+from class_builder import ModelBuilder  # import your model class
 import inspect
 
+# MlFlow requires to have a list of paths, to get the exact address of your package 
 def _set_code_path():
     code_path = inspect.getfile(class_builder)
     root_path = code_path.replace(code_path.split("/")[-1], "")
@@ -167,7 +181,7 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
                            signature=signature, 
                            input_example=input_example,
                            pip_requirements = ["-r requirements.txt"],
-                           code_paths = ["./class_builder.py"] #[code_path+"class_builder.py"]
+                           code_paths = ["./class_builder.py"] #OR [code_path+"class_builder.py"], you can also log the whole package if more then 1 script involved
                           )
   # score
   train_metrics = calculate_metrics(target_metrics, pred_train, y_train, "train")
@@ -184,86 +198,31 @@ with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_n
   print(f"Model logged under run_id: {run_id}")
   print(f"Train metrics: {train_metrics}")
   print(f"Test metrics: {test_metrics}")
-
-# COMMAND ----------
-
-
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ### Logging model as a pyfunc wrapper 
-
-# COMMAND ----------
-
-import class_builder
-from class_builder import ModelBuilder
-import inspect
-
-def _set_code_path():
-    code_path = inspect.getfile(class_builder)
-    root_path = code_path.replace(code_path.split("/")[-1], "")
-    return root_path
-  
-code_path = _set_code_path()
-print(f"Your code path is {code_path}")
-# Set our Model Class 
-model_builder = ModelBuilder()
-
-target_metrics = {
-  "average_precision_score": average_precision_score,
-  "accuracy_score": accuracy_score,
-  "log_loss": log_loss
-}
-
-class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
-  def __init__(self, model):
-    self.model = model
-  def predict(self, context, model_input):
-    return self.model.predict(model_input)
-  
-# train model with optimal settings 
-with mlflow.start_run(experiment_id = experiment.experiment_id, run_name = run_name) as run:
-
-  # preprocess features and train
-  model = model_builder.build_pipeline(parsed_params)
-  model.fit(X_train, y_train)
-  # predict
-  pred_train = model.predict_proba(X_train)
-  
-  # ******
-  # MlFlow Part Start 
-  # ******
-  
-  # capture run info for later use
-  run_id = run.info.run_id
-  
-  signature = infer_signature(X_train, model.predict(X_train))
-  input_example = X_train.iloc[:5,:]
-  
-  wrappedModel = SklearnModelWrapper(model)
-  mlflow.pyfunc.log_model(artifact_path=artifact_name,
-                           python_model=wrappedModel,
-                           signature=signature, 
-                           input_example=input_example,
-                           pip_requirements = ["-r requirements.txt"],
-                           code_path = ["./class_builder.py"] #[code_path+"class_builder.py"]
-                          )
-  # score
-  train_metrics = calculate_metrics(target_metrics, pred_train, y_train, "train")
-  pred_test = model.predict_proba(X_test)
-  test_metrics = calculate_metrics(target_metrics, pred_test, y_test, "test")
-  
-  mlflow.log_metrics(train_metrics)
-  mlflow.log_metrics(test_metrics)
-  mlflow.log_params(parsed_params)
-  mlflow.set_tag("best_model", "true")
-
-  print('Xgboost Trained with XGBClassifier')
-  version_info = mlflow.register_model(model_uri = f"runs:/{run_id}/{artifact_name}", name = model_name)
-  print(f"Model logged under run_id: {run_id}")
-  print(f"Train metrics: {train_metrics}")
-  print(f"Test metrics: {test_metrics}")
+# MAGIC ### Logging model as a pyfunc wrapper
+# MAGIC 
+# MAGIC If you have a flavor that does not relate to the classic flavors, you can use a pyfunc wrapper instead
+# MAGIC ```
+# MAGIC class SklearnModelWrapper(mlflow.pyfunc.PythonModel):
+# MAGIC   def __init__(self, model):
+# MAGIC     self.model = model
+# MAGIC   def predict(self, context, model_input):
+# MAGIC     return self.model.predict(model_input)
+# MAGIC   
+# MAGIC wrappedModel = SklearnModelWrapper(model)
+# MAGIC mlflow.pyfunc.log_model(artifact_path=artifact_name,
+# MAGIC                          python_model=wrappedModel,
+# MAGIC                          signature=signature, 
+# MAGIC                          input_example=input_example,
+# MAGIC                          pip_requirements = ["-r requirements.txt"],
+# MAGIC                          code_path = ["./class_builder.py"] #[code_path+"class_builder.py"]
+# MAGIC                         )
+# MAGIC 
+# MAGIC 
+# MAGIC ```
 
 # COMMAND ----------
 

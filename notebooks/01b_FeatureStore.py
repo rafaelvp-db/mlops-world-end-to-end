@@ -4,15 +4,16 @@ dbutils.widgets.text("reinitialize", "True")
 # Try to keep Python and SQL widget with the same name, this helps when you sqitch around python and sql variables 
 dbutils.widgets.text("db_name", "churn_mlops_anastasia_prokaieva")
 dbutils.widgets.text("feature_table_name", "telco_churn_features_ap")
+dbutils.widgets.text("model_name", "telco_churn_fs")
 
 
 reinitialize = dbutils.widgets.get("reinitialize") # returns a str all the time, bool returns True 
 db_name = dbutils.widgets.get("db_name")
 fs_table_name = dbutils.widgets.get("feature_table_name")
+model_name = dbutils.widgets.get("model_name")
 
 # importing all of our prepared scripts
 from utils import *
-
 from databricks import feature_store
 # Instantiate the feature store client
 fs = feature_store.FeatureStoreClient()
@@ -77,7 +78,7 @@ display(telco_df_feat)
 try:  
   # Create the feature store based on df schema and write df to it
   features_table = fs.create_table(
-    name=f'{db_name}.{}',
+    name=f'{db_name}.{fs_table_name}',
     primary_keys=['customerID'],
     df=telco_df_feat, # you can create a table and write data into it later, keep in mind once created you should write into not recreate a table 
     description="""
@@ -116,10 +117,6 @@ except:
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 # MAGIC %md 
 # MAGIC ## Examine FS tables and main functionalities 
 
@@ -154,6 +151,11 @@ help(fs)
 # COMMAND ----------
 
 features_table.features
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ### Example of Training a model with Feature Store and MLFlow 
 
 # COMMAND ----------
 
@@ -199,55 +201,61 @@ from sklearn.preprocessing import OneHotEncoder
 mlflow.sklearn.autolog()
 
 # Create the training dataframe. We will feed this dataframe to our model to perform the feature lookup from the feature store and then train the model
-train_data_df = telco_df.select("customerID", "Churn")
+# keep in mind that often the label is not with the Features - then it's a useful hint how to merge 2 tables per ID
+train_data_df = fs.read_table(f"{db_name}.full_set").select("customerID", "Churn")
 
-# Define a method for reuse later
-def fit_model(model_feature_lookups):
-
-  with mlflow.start_run():
-    # Use a combination of Feature Store features and data residing outside Feature Store in the training set
-    training_set = fs.create_training_set(train_data_df,
-                                          feature_lookups=model_feature_lookups, #feature_lookups = list1_feature_lookups + list2_feature_lookups,
+training_set = fs.create_training_set(train_data_df,
+                                          feature_lookups=features_table_lookups, #feature_lookups = list1_feature_lookups + list2_feature_lookups,
                                           label="Churn",
                                           exclude_columns="customerID")
-
-    training_pd = training_set.load_df().toPandas()
-    X = training_pd.drop("Churn", axis=1)
-    y = training_pd["Churn"]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # Not attempting to tune the model at all for purposes here
-    gb_classifier = GradientBoostingClassifier(n_iter_no_change=10)
-    # Need to encode categorical cols
-    encoders = ColumnTransformer(transformers=[('encoder', OneHotEncoder(handle_unknown='ignore'), X.columns[X.dtypes == 'object'])])
-    pipeline = Pipeline([("encoder", encoders), ("gb_classifier", gb_classifier)])
-    pipeline_model = pipeline.fit(X_train, y_train)
-    
-    mlflow.log_metric('test_accuracy', pipeline_model.score(X_test, y_test))
-
-    fs.log_model(
-      pipeline_model,
-      "model",
-      flavor=mlflow.sklearn,
-      training_set=training_set,
-      registered_model_name=model_name,
-      input_example=X[:100],
-      signature=infer_signature(X, y))
-      
-fit_model(features_table_lookups)
-
-# COMMAND ----------
-
+# Use a combination of Feature Store features and data residing outside Feature Store in the training set
+training_pd = training_set.load_df().toPandas()
+X = training_pd.drop("Churn", axis=1)
+y = training_pd["Churn"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 
 # COMMAND ----------
 
+with mlflow.start_run():
+
+  # Not attempting to tune the model at all for purposes here
+  gb_classifier = GradientBoostingClassifier(n_iter_no_change=10)
+  # Need to encode categorical cols
+  encoders = ColumnTransformer(transformers=[('encoder', OneHotEncoder(handle_unknown='ignore'), X.columns[X.dtypes == 'object'])])
+  pipeline = Pipeline([("encoder", encoders), ("gb_classifier", gb_classifier)])
+  pipeline_model = pipeline.fit(X_train, y_train)
+
+  mlflow.log_metric('test_accuracy', pipeline_model.score(X_test, y_test))
+
+  fs.log_model(
+    pipeline_model,
+    "model",
+    flavor=mlflow.sklearn,
+    training_set=training_set,
+    registered_model_name=model_name,
+    input_example=X_train.iloc[:10,:],
+    signature=infer_signature(X_train, y_train))
 
 
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC ### Feature store in Production with MlFlow
+# MAGIC It's trivial to apply a registered MLflow model to features with score_batch. Again its only input are customerIDs (without the label Churn of course!). Everything else is looked up. However, eventually the goal is to produce a real-time service from this model and these features.
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+# Get the dataframe of customer ids to predict
+batch_input_df = train_data_df.select("customerID")
+# Generate predictions with fs.score_batch
+with_predictions = fs.score_batch(f"models:/{model_name}/1", batch_input_df, result_type='string')
+display(with_predictions)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC #### Feature store in Production with MlFlow Template
 # MAGIC 
 # MAGIC ```
 # MAGIC # mocking function example 
@@ -273,11 +281,6 @@ fit_model(features_table_lookups)
 # MAGIC                   
 # MAGIC train_model_fs(features_table_lookups)
 # MAGIC ```
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC #### Example of Training a model with Feature Store and MLFlow 
 
 # COMMAND ----------
 
@@ -340,10 +343,6 @@ fit_model(features_table_lookups)
 # MAGIC ### Using the generated notebook to build our model
 # MAGIC 
 # MAGIC Next step: [Explore the generated Auto-ML notebook]($./02a_automl_code_generation)
-
-# COMMAND ----------
-
-
 
 # COMMAND ----------
 

@@ -44,14 +44,31 @@ Our work is devided into multiple steps:
   - run feature preprocessing on Spark
   - save prepared tabls into Delta 
   - explore tables with Bamboolib 
+  - explore tables with Databricks Notebook widgets for Vis + DataProfiler
   
 - **trained initial baseline model** 
   - train a model with an AutoML for a baseline and initial code generation
-  - used HyperOpt on Spark for a hyperparameters tunning for an advance model 
-    - track each model with the MlFlow tracking 
-  - register the best model into MlFlow registry
-  - creating a wrapper in case other team members need to access it and run the model apart 
   
-- **promoting model into Stage**
-  - 
+- **hyperparameters tunning for an advance model**
+  - used HyperOpt with SparkTrials
+  - track each model with the MlFlow tracking 
+  - register the best model into MlFlow registry
+  - creating a wrapper to serve the model later
+  
+- **Databricks Feature Store***
+  - create a Feature Store Table 
+  - create a FeatureLookup 
+  - train your model with FS and MLFlow
+  - score your model
+  
+- **promoting model**
+  - promote your Best model from None to Staging/ Production 
+  - Batch Scoring 
+  - Enabling Serving with API v2
+  
+- **Score you model**
+  - Batch Inference with Single Node model 
+  - Batch INference with SparkUDF 
+  - Live Serving with Databricks and MlFlow 
+
   
